@@ -30,6 +30,9 @@ FFLAGS += -I$(LIB_FATODE_DIR)/src/ADJ/RK_ADJ
 FFLAGS += -I$(LIB_FATODE_DIR)/src/ADJ/ROS_ADJ
 FFLAGS += -I$(LIB_FATODE_DIR)/src/ADJ/SDIRK_ADJ
 
+debug: FFLAGS += -g -DDEBUG -O0
+debug: $(LIB_FATODE_DIR)/libfatode.a
+
 BLAS=-framework Accelerate
 LAPACK=
 # BLAS=/opt/lapack/lib/libblas.a
@@ -71,4 +74,5 @@ FAT_LUWRAP =
 
 
 clean:
+	@find src -name *.o -exec rm {} \;
 	@rm $(LIB_FATODE_DIR)/*.a

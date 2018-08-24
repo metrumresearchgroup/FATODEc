@@ -67,7 +67,7 @@ contains
       end subroutine lapack_free
 
 end module fwd_rk_lapack
-#endif FULL_ALGEBRA
+#endif
 
 #ifdef SPARSE_UMF
 module umf
