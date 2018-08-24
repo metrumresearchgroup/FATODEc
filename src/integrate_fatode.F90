@@ -13,18 +13,20 @@ SUBROUTINE integrate_fatode_fwd_erk( TIN, TOUT, NVAR, VAR, RTOL, ATOL, FUN, &
   DOUBLE PRECISION, INTENT(IN) :: ATOL(NVAR)
   DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
   DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
-  ! Optional input parameters and statistics
-  INTEGER,       INTENT(IN),  OPTIONAL :: ICNTRL_U(20)
-  DOUBLE PRECISION, INTENT(IN),  OPTIONAL :: RCNTRL_U(20)
-  INTEGER,       INTENT(OUT), OPTIONAL :: ISTATUS_U(20)
-  DOUBLE PRECISION, INTENT(OUT), OPTIONAL :: RSTATUS_U(20)
-  INTEGER,       INTENT(OUT), OPTIONAL :: Ierr_U
+
+  ! control and output
+  INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
+  DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
+  INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
+  DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
+  INTEGER,          INTENT(OUT) :: Ierr_U
 
   interface
-     subroutine fun(nvar, t, yy, fy) bind (c)
+     subroutine fun(n, t, y, fy) bind (c)
        use iso_c_binding
-       integer nvar
-       double precision :: fy(nvar), yy(nvar), t
+       integer, intent(in) :: n
+       double precision, intent(in) :: t, y(n)
+       double precision, intent(inout) :: fy(n)
      end subroutine fun
   end interface
 

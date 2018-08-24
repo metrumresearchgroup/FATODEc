@@ -17,6 +17,19 @@ LIB_FATODE_DIR ?= .
 #~~~> gfortran (GNU FORTRAN Compiler)
 FC = gfortran
 FFLAGS = -cpp -O2 -ffree-line-length-none $(FATODE_LS_CONFIG)
+FFLAGS += -I$(LIB_FATODE_DIR)/src/FWD/ERK
+FFLAGS += -I$(LIB_FATODE_DIR)/src/FWD/RK
+FFLAGS += -I$(LIB_FATODE_DIR)/src/FWD/ROS
+FFLAGS += -I$(LIB_FATODE_DIR)/src/FWD/SDIRK
+FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/ERK_TLM
+FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/RK_TLM
+FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/ROS_TLM
+FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/SDIRK_TLM
+FFLAGS += -I$(LIB_FATODE_DIR)/src/ADJ/ERK_ADJ
+FFLAGS += -I$(LIB_FATODE_DIR)/src/ADJ/RK_ADJ
+FFLAGS += -I$(LIB_FATODE_DIR)/src/ADJ/ROS_ADJ
+FFLAGS += -I$(LIB_FATODE_DIR)/src/ADJ/SDIRK_ADJ
+
 BLAS=-framework Accelerate
 LAPACK=
 # BLAS=/opt/lapack/lib/libblas.a
@@ -37,6 +50,7 @@ $(LIB_FATODE_DIR)/src/%.o : $(LIB_FATODE_DIR)/src/%.F90
 	$(FC) $(FFLAGS) $(CPPFLAGS) -J$(dir $@) -c $< -o $@
 
 FAT_OBJS := $(patsubst %.F90, %.o, $(shell find $(LIB_FATODE_DIR)/src -name *.F90))
+
 
 $(LIB_FATODE_DIR)/libfatode.a : $(FAT_OBJS)
 	$(AR) $(ARFLAGS) $@ $^
