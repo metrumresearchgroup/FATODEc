@@ -8,21 +8,22 @@ FATODE_LS_CONFIG  =  -DFULL_ALGEBRA
 ARFLAGS = -rs
 LIB_FATODE_DIR ?= .
 
+FC = gfortran
+CXX = clang++
+
 #~~~> intel fortran
 #export FC=ifort
 #export FFLAGS= -cpp -O2 -nogen-interface -fltconsitency $(FATODE_LS_CONFIG) -warn all
 #BLAS=    /opt/ifort_libs/libblas.a
 #LAPACK =  /opt/ifort_libs/liblapack.a
 
-#~~~> gfortran (GNU FORTRAN Compiler)
-FC = gfortran
 FFLAGS = -cpp -O2 -ffree-line-length-none $(FATODE_LS_CONFIG)
 FFLAGS += -I$(LIB_FATODE_DIR)/src/FWD/ERK
 FFLAGS += -I$(LIB_FATODE_DIR)/src/FWD/RK
 FFLAGS += -I$(LIB_FATODE_DIR)/src/FWD/ROS
 FFLAGS += -I$(LIB_FATODE_DIR)/src/FWD/SDIRK
 FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/ERK_TLM
-FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/RK_TLM
+# FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/RK_TLM
 FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/ROS_TLM
 FFLAGS += -I$(LIB_FATODE_DIR)/src/TLM/SDIRK_TLM
 FFLAGS += -I$(LIB_FATODE_DIR)/src/ADJ/ERK_ADJ
@@ -38,23 +39,20 @@ LAPACK=
 # BLAS=/opt/lapack/lib/libblas.a
 # LAPACK=/opt/lapack/lib/liblapack.a
 
-# FATODE_TESTS := $(subst .cpp,$(EXE),$(shell find test/unit/math/torsten -name *fatode_test.cpp))
-# $(FATODE_TESTS) : $(LIB_FATODE)
-
-LIBDIR    = $(FATDIR)/LSS_LIBS/x86_64_Linux
-MODEL     = ADJ
-FAMILY    = RK_ADJ
-
-INTEGRATOR= $(FAMILY)_f90_Integrator.o
-
 all: $(LIB_FATODE_DIR)/libfatode.a
 
 $(LIB_FATODE_DIR)/src/%.o : $(LIB_FATODE_DIR)/src/%.F90
 	$(FC) $(FFLAGS) $(CPPFLAGS) -J$(dir $@) -c $< -o $@
 
-FAT_OBJS := $(patsubst %.F90, %.o, $(shell find $(LIB_FATODE_DIR)/src -name *.F90))
+CXXFLAGS = -I$(LIB_FATODE_DIR)/include
+$(LIB_FATODE_DIR)/src/fatode_cc.o : $(LIB_FATODE_DIR)/src/fatode_cc.cpp
+	$(COMPILE.cc) -o $@ $^
 
-
+FAT_WRAPPER  := $(LIB_FATODE_DIR)/src/integrate_fatode.o
+FAT_FWD_OBJS := $(patsubst %.F90, %.o, $(shell find $(LIB_FATODE_DIR)/src/FWD -name *.F90))
+FAT_TLM_OBJS := $(patsubst %.F90, %.o, $(shell find $(LIB_FATODE_DIR)/src/TLM -name *.F90))
+FAT_ADJ_OBJS := $(patsubst %.F90, %.o, $(shell find $(LIB_FATODE_DIR)/src/ADJ -name *.F90))
+FAT_OBJS := $(FAT_WRAPPER) $(FAT_FWD_OBJS) $(FAT_TLM_OBJS) # $(FAT_ADJ_OBJS)
 $(LIB_FATODE_DIR)/libfatode.a : $(FAT_OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
@@ -69,10 +67,7 @@ FAT_LUWRAP =
 
 # default: driver clean
 
-# driver: cbm4_rk_adj_dr.o $(PAR) $(LSSOLVER) $(INTEGRATOR)
-# 	$(FC) $(FFLAGS) -o $(APP) $< $(FAT_LUWRAP) $(FAT_LUPACK) $(FAT_UMFWRAP) $(FAT_UMFPACK) $(LSSOLVER) $(INTEGRATOR) $(PAR) $(LAPACK) $(BLAS) $(LIB)
-
-
 clean:
 	@find src -name *.o -exec rm {} \;
+	@find src -name *.mod -exec rm {} \;
 	@rm $(LIB_FATODE_DIR)/*.a
