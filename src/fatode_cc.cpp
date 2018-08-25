@@ -1,4 +1,4 @@
-#include <fatode_cc.hpp>
+#include <fatodec.hpp>
 
 void integrate_ode_fwd_erk( double tin, double tout,
                             int nvar,

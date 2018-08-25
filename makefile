@@ -39,7 +39,7 @@ LAPACK=
 # BLAS=/opt/lapack/lib/libblas.a
 # LAPACK=/opt/lapack/lib/liblapack.a
 
-all: $(LIB_FATODE_DIR)/libfatode.a $(LIB_FATODE_DIR)/libfatode_cc.a
+all: $(LIB_FATODE_DIR)/libfatode.a # $(LIB_FATODE_DIR)/libfatode_cc.a
 
 $(LIB_FATODE_DIR)/src/%.o : $(LIB_FATODE_DIR)/src/%.F90
 	$(FC) $(FFLAGS) $(CPPFLAGS) -J$(dir $@) -c $< -o $@
@@ -55,10 +55,8 @@ FAT_WRAPPER  := $(LIB_FATODE_DIR)/src/integrate_fatode.o
 $(FAT_WRAPPER) : $(FAT_FWD_OBJS) $(FAT_TLM_OBJS)
 
 FAT_OBJS := $(FAT_WRAPPER) $(FAT_FWD_OBJS) $(FAT_TLM_OBJS) # $(FAT_ADJ_OBJS)
+FAT_OBJS += $(LIB_FATODE_DIR)/src/fatode_cc.o
 $(LIB_FATODE_DIR)/libfatode.a : $(FAT_OBJS)
-	$(AR) $(ARFLAGS) $@ $^
-
-$(LIB_FATODE_DIR)/libfatode_cc.a : $(LIB_FATODE_DIR)/src/fatode_cc.o
 	$(AR) $(ARFLAGS) $@ $^
 
 LDFLAGS += $(LIB_FATODE_DIR)/libfatode.a
