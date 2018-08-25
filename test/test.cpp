@@ -1,4 +1,4 @@
-#include <fatodec.hpp>
+#include <fatode_cc.hpp>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
@@ -74,6 +74,12 @@ struct FATOdeBindingTest : public testing::Test {
 TEST_F(FATOdeBindingTest, FWD_ERK) {
   integrate_fatode_fwd_erk( &tin, &tout, &n, fy.data(), rtol.data(), atol.data(), fsho, icntrl_u.data(), rcntrl_u.data(), istatus_u.data(), rstatus_u.data(), &ierr_u );
   const std::vector<double> fy_sol {-0.4655835298, 0.5054222626};
+  EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
+  EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
+
+  fy[0] = 0.0;
+  fy[1] = 1.0;
+  integrate_ode_fwd_erk( tin, tout, n, fy, rtol, atol, fsho, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u );
   EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
   EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
 }

@@ -18,9 +18,9 @@ debug : test
 
 $(GTEST)/src/gtest-all.o: CXXFLAGS = $(GTEST_CXXFLAGS) -g
 
-%.o : %.cpp
-	$(COMPILE.cc) -o $@ $^
-test : test.o $(GTEST_MAIN) $(GTEST)/src/gtest-all.o $(LIB_FATODE_DIR)/libfatode.a
+%.o : %.cpp $(LIB_FATODE_DIR)/include/fatodec.hpp $(LIB_FATODE_DIR)/include/fatodecc.hpp
+	$(COMPILE.cc) -o $@ $<
+test : test.o $(GTEST_MAIN) $(GTEST)/src/gtest-all.o $(LIB_FATODE_DIR)/libfatode.a $(LIB_FATODE_DIR)/libfatode_cc.a
 	$(LINK.cpp) -o $@ $^
 clean :
 	@rm *.o
