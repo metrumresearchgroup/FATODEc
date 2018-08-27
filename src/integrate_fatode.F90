@@ -1,28 +1,37 @@
-! torsten's interface to FATODE library
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! FWD ERK module wrapper
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE integrate_fatode_fwd_erk( TIN, TOUT, NVAR, VAR, RTOL, ATOL, FUN, &
-     ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U ) bind(c)
+! torsten's interface to fatode library
+module fatode_c
 
   use iso_c_binding
-  use ERK_f90_Integrator
+
   implicit none
 
-  INTEGER, INTENT(IN) :: NVAR
-  DOUBLE PRECISION, INTENT(INOUT) :: VAR(NVAR)
-  DOUBLE PRECISION, INTENT(IN) :: RTOL(NVAR)
-  DOUBLE PRECISION, INTENT(IN) :: ATOL(NVAR)
-  DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-  DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+  integer, parameter:: dp=kind(0.d0)
+
+contains
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! fwd erk module wrapper
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine integrate_fatode_fwd_erk( tin, tout, nvar, var, rtol, atol, fun, &
+     icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
+
+  use iso_c_binding
+  use erk_f90_integrator
+  implicit none
+
+  integer, intent(in) :: nvar
+  real(dp), intent(inout) :: var(nvar)
+  real(dp), intent(in) :: rtol(nvar)
+  real(dp), intent(in) :: atol(nvar)
+  real(dp), intent(in) :: tin  ! start time
+  real(dp), intent(in) :: tout ! end time
 
   ! control and output
-  INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-  DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-  INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-  DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-  INTEGER,          INTENT(OUT) :: Ierr_U
+  integer,          intent(in)  :: icntrl_u(20)
+  real(dp), intent(in)  :: rcntrl_u(20)
+  integer,          intent(out) :: istatus_u(20)
+  real(dp), intent(out) :: rstatus_u(20)
+  integer,          intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -33,34 +42,96 @@ SUBROUTINE integrate_fatode_fwd_erk( TIN, TOUT, NVAR, VAR, RTOL, ATOL, FUN, &
      end subroutine fun
   end interface
 
-  call integrate( TIN, TOUT, NVAR, VAR, RTOL, ATOL, FUN, &
-       ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U )
+  call integrate( tin, tout, nvar, var, rtol, atol, fun, &
+       icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
-end SUBROUTINE integrate_fatode_fwd_erk
+end subroutine integrate_fatode_fwd_erk
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! FWD RK module wrapper
+! fwd erk module wrapper for C++
+!
+! func_cc has signature
+! void func_cc(int* n, double* t, double y[], double fy[], 
+!              double theta[], double x_r[], int x_i[] )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE integrate_fatode_fwd_rk( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FUN, JAC, &
-     ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U ) bind(c)
+subroutine integrate_fatode_fwd_erk_cc( tin, tout, nvar, var, rtol, atol, fun_cc, &
+     icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u, &
+     & user_data ) bind(c)
 
   use iso_c_binding
-  use RK_f90_Integrator
+  use erk_f90_integrator
   implicit none
 
-  INTEGER, INTENT(IN) :: N, NNZERO
-  DOUBLE PRECISION, INTENT(INOUT) :: VAR(N)
-  DOUBLE PRECISION, INTENT(IN) :: RTOL(N)
-  DOUBLE PRECISION, INTENT(IN) :: ATOL(N)
-  DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-  DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+  integer, intent(in) :: nvar
+  real(dp), intent(inout) :: var(nvar)
+  real(dp), intent(in) :: rtol(nvar)
+  real(dp), intent(in) :: atol(nvar)
+  real(dp), intent(in) :: tin  ! start time
+  real(dp), intent(in) :: tout ! end time
+  
+  ! control and output
+  integer,          intent(in)  :: icntrl_u(20)
+  real(dp), intent(in)  :: rcntrl_u(20)
+  integer,          intent(out) :: istatus_u(20)
+  real(dp), intent(out) :: rstatus_u(20)
+  integer,          intent(out) :: ierr_u
+
+  ! c++ functor inputs
+  type(c_ptr), intent(inout) :: user_data;
+
+  interface
+     subroutine func_cc(n, t, y, fy, user_data) bind (c)
+       use iso_c_binding
+       integer, parameter:: dp=kind(0.d0)
+
+       integer,  intent(in) :: n
+       real(dp), intent(in) :: t, y(n)
+       real(dp), intent(inout) :: fy(n)
+       type(c_ptr), intent(inout) :: user_data;
+     end subroutine func_cc
+  end interface
+  procedure(func_cc) :: fun_cc
+
+  call integrate( tin, tout, nvar, var, rtol, atol, fun, &
+       icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
+
+contains
+  subroutine fun(n, t, y, fy) bind (c)
+    use iso_c_binding
+    integer, intent(in) :: n
+    double precision, intent(in) :: t, y(n)
+    double precision, intent(inout) :: fy(n)
+
+    call fun_cc(n, t, y, fy, user_data)
+
+  end subroutine fun
+
+end subroutine integrate_fatode_fwd_erk_cc
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! fwd rk module wrapper
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine integrate_fatode_fwd_rk( tin, tout, n, nnzero, var, rtol, atol, fun, jac, &
+     icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
+
+  use iso_c_binding
+  use rk_f90_integrator
+  implicit none
+
+  integer, intent(in) :: n, nnzero
+  real(dp), intent(inout) :: var(n)
+  real(dp), intent(in) :: rtol(n)
+  real(dp), intent(in) :: atol(n)
+  real(dp), intent(in) :: tin  ! start time
+  real(dp), intent(in) :: tout ! end time
 
   ! control and output
-  INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-  DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-  INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-  DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-  INTEGER,          INTENT(OUT) :: Ierr_U
+  integer,          intent(in)  :: icntrl_u(20)
+  real(dp), intent(in)  :: rcntrl_u(20)
+  integer,          intent(out) :: istatus_u(20)
+  real(dp), intent(out) :: rstatus_u(20)
+  integer,          intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -80,34 +151,34 @@ SUBROUTINE integrate_fatode_fwd_rk( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FUN, 
      end subroutine jac
   end interface
 
-  call integrate( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FUN, JAC, &
-       ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U )
+  call integrate( tin, tout, n, nnzero, var, rtol, atol, fun, jac, &
+       icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
-end SUBROUTINE integrate_fatode_fwd_rk
+end subroutine integrate_fatode_fwd_rk
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! FWD ROS module wrapper
+! fwd ros module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE integrate_fatode_fwd_ros( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FUN, JAC, &
-     ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U ) bind(c)
+subroutine integrate_fatode_fwd_ros( tin, tout, n, nnzero, var, rtol, atol, fun, jac, &
+     icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
-  use ROS_f90_Integrator
+  use ros_f90_integrator
   implicit none
 
-  INTEGER, INTENT(IN) :: N, NNZERO
-  DOUBLE PRECISION, INTENT(INOUT) :: VAR(N)
-  DOUBLE PRECISION, INTENT(IN) :: RTOL(N)
-  DOUBLE PRECISION, INTENT(IN) :: ATOL(N)
-  DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-  DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+  integer, intent(in) :: n, nnzero
+  real(dp), intent(inout) :: var(n)
+  real(dp), intent(in) :: rtol(n)
+  real(dp), intent(in) :: atol(n)
+  real(dp), intent(in) :: tin  ! start time
+  real(dp), intent(in) :: tout ! end time
 
   ! control and output
-  INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-  DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-  INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-  DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-  INTEGER,          INTENT(OUT) :: Ierr_U
+  integer,          intent(in)  :: icntrl_u(20)
+  real(dp), intent(in)  :: rcntrl_u(20)
+  integer,          intent(out) :: istatus_u(20)
+  real(dp), intent(out) :: rstatus_u(20)
+  integer,          intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -127,34 +198,34 @@ SUBROUTINE integrate_fatode_fwd_ros( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FUN,
      end subroutine jac
   end interface
 
-  call integrate( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FUN, JAC, &
-       ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U )
+  call integrate( tin, tout, n, nnzero, var, rtol, atol, fun, jac, &
+       icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
-end SUBROUTINE integrate_fatode_fwd_ros
+end subroutine integrate_fatode_fwd_ros
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! FWD SDIRK module wrapper
+! fwd sdirk module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE integrate_fatode_fwd_sdirk( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FUN, JAC, &
-     ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U ) bind(c)
+subroutine integrate_fatode_fwd_sdirk( tin, tout, n, nnzero, var, rtol, atol, fun, jac, &
+     icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
-  use SDIRK_f90_Integrator
+  use sdirk_f90_integrator
   implicit none
 
-  INTEGER, INTENT(IN) :: N, NNZERO
-  DOUBLE PRECISION, INTENT(INOUT) :: VAR(N)
-  DOUBLE PRECISION, INTENT(IN) :: RTOL(N)
-  DOUBLE PRECISION, INTENT(IN) :: ATOL(N)
-  DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-  DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+  integer, intent(in) :: n, nnzero
+  real(dp), intent(inout) :: var(n)
+  real(dp), intent(in) :: rtol(n)
+  real(dp), intent(in) :: atol(n)
+  real(dp), intent(in) :: tin  ! start time
+  real(dp), intent(in) :: tout ! end time
 
   ! control and output
-  INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-  DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-  INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-  DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-  INTEGER,          INTENT(OUT) :: Ierr_U
+  integer,          intent(in)  :: icntrl_u(20)
+  real(dp), intent(in)  :: rcntrl_u(20)
+  integer,          intent(out) :: istatus_u(20)
+  real(dp), intent(out) :: rstatus_u(20)
+  integer,          intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -174,35 +245,35 @@ SUBROUTINE integrate_fatode_fwd_sdirk( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FU
      end subroutine jac
   end interface
 
-  call integrate( TIN, TOUT, N, NNZERO, VAR, RTOL, ATOL, FUN, JAC, &
-       ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U )
+  call integrate( tin, tout, n, nnzero, var, rtol, atol, fun, jac, &
+       icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
-end SUBROUTINE integrate_fatode_fwd_sdirk
+end subroutine integrate_fatode_fwd_sdirk
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! TLM ERK module wrapper
+! tlm erk module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE integrate_fatode_tlm_erk( TIN, TOUT, NVAR, NTLM, VAR, VAR_TLM, ATOL_TLM, &
-     RTOL_TLM, ATOL, RTOL,&
-     FUN, JAC, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, IERR_U ) bind(c)
+subroutine integrate_fatode_tlm_erk( tin, tout, nvar, ntlm, var, var_tlm, atol_tlm, &
+     rtol_tlm, atol, rtol,&
+     fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
-  use ERK_TLM_f90_Integrator
+  use erk_tlm_f90_integrator
   implicit none
 
-   INTEGER, INTENT(IN) :: NVAR,NTLM
-   DOUBLE PRECISION, INTENT(INOUT) :: VAR(NVAR),VAR_TLM(NVAR,NTLM),&
-                           RTOL_TLM(NVAR,NTLM), ATOL_TLM(NVAR,NTLM)
-   DOUBLE PRECISION, INTENT(IN) :: RTOL(NVAR)
-   DOUBLE PRECISION, INTENT(IN) :: ATOL(NVAR)
-   DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-   DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+   integer, intent(in) :: nvar,ntlm
+   real(dp), intent(inout) :: var(nvar),var_tlm(nvar,ntlm),&
+                           rtol_tlm(nvar,ntlm), atol_tlm(nvar,ntlm)
+   real(dp), intent(in) :: rtol(nvar)
+   real(dp), intent(in) :: atol(nvar)
+   real(dp), intent(in) :: tin  ! start time
+   real(dp), intent(in) :: tout ! end time
 
-   INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-   DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-   INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-   DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-   INTEGER,          INTENT(OUT) :: IERR_U
+   integer,          intent(in)  :: icntrl_u(20)
+   real(dp), intent(in)  :: rcntrl_u(20)
+   integer,          intent(out) :: istatus_u(20)
+   real(dp), intent(out) :: rstatus_u(20)
+   integer,          intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -222,35 +293,35 @@ SUBROUTINE integrate_fatode_tlm_erk( TIN, TOUT, NVAR, NTLM, VAR, VAR_TLM, ATOL_T
      end subroutine jac
   end interface
 
-  call INTEGRATE_TLM(TIN, TOUT, NVAR, NTLM, VAR, VAR_TLM, ATOL_TLM, &
-       RTOL_TLM, ATOL, RTOL,&
-       FUN, JAC, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, IERR_U )
+  call integrate_tlm(tin, tout, nvar, ntlm, var, var_tlm, atol_tlm, &
+       rtol_tlm, atol, rtol,&
+       fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
-end SUBROUTINE integrate_fatode_tlm_erk
+end subroutine integrate_fatode_tlm_erk
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! TLM RK module wrapper
+! tlm rk module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! SUBROUTINE integrate_fatode_tlm_rk( TIN, TOUT, N, NTLM, NNZERO, Y, Y_TLM, ATOL_TLM, RTOL_TLM, &
-!  ATOL, RTOL, FUN, JAC, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, IERR_U ) bind(c)
+! subroutine integrate_fatode_tlm_rk( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_tlm, rtol_tlm, &
+!  atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
 !   use iso_c_binding
-!   use RK_TLM_f90_Integrator
+!   use rk_tlm_f90_integrator
 !   implicit none
 
-!   INTEGER :: N, NTLM, NNZERO
-!    DOUBLE PRECISION, INTENT(INOUT) :: Y(N), Y_TLM(N,NTLM),&
-!                            RTOL_TLM(N,NTLM), ATOL_TLM(N,NTLM)
-!    DOUBLE PRECISION, INTENT(IN) :: RTOL(N)
-!    DOUBLE PRECISION, INTENT(IN) :: ATOL(N)
-!    DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-!    DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+!   integer :: n, ntlm, nnzero
+!    real(dp), intent(inout) :: y(n), y_tlm(n,ntlm),&
+!                            rtol_tlm(n,ntlm), atol_tlm(n,ntlm)
+!    real(dp), intent(in) :: rtol(n)
+!    real(dp), intent(in) :: atol(n)
+!    real(dp), intent(in) :: tin  ! start time
+!    real(dp), intent(in) :: tout ! end time
 
-!    INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-!    DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-!    INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-!    DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-!    INTEGER,          INTENT(OUT) :: IERR_U
+!    integer,          intent(in)  :: icntrl_u(20)
+!    real(dp), intent(in)  :: rcntrl_u(20)
+!    integer,          intent(out) :: istatus_u(20)
+!    real(dp), intent(out) :: rstatus_u(20)
+!    integer,          intent(out) :: ierr_u
 
 !   interface
 !      subroutine fun(n, t, y, fy) bind (c)
@@ -270,34 +341,34 @@ end SUBROUTINE integrate_fatode_tlm_erk
 !      end subroutine jac
 !   end interface
 
-!   call INTEGRATE_TLM( N, NTLM, NNZERO, Y, Y_TLM, TIN, TOUT, ATOL_TLM, RTOL_TLM, &
-!        ATOL, RTOL, FUN, JAC, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, IERR_U )
+!   call integrate_tlm( n, ntlm, nnzero, y, y_tlm, tin, tout, atol_tlm, rtol_tlm, &
+!        atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
-! end SUBROUTINE integrate_fatode_tlm_rk
+! end subroutine integrate_fatode_tlm_rk
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! TLM ROS module wrapper
+! tlm ros module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE integrate_fatode_tlm_ros( TIN, TOUT, N, NTLM, NNZERO, Y, Y_TLM, ATOL_TLM, RTOL_TLM, &
-     ATOL, RTOL, FUN, JAC, HESS_VEC, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, IERR_U ) bind(c)
+subroutine integrate_fatode_tlm_ros( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_tlm, rtol_tlm, &
+     atol, rtol, fun, jac, hess_vec, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
-  use ROS_TLM_f90_Integrator
+  use ros_tlm_f90_integrator
   implicit none
 
-  INTEGER :: N, NTLM, NNZERO
-   DOUBLE PRECISION, INTENT(INOUT) :: Y(N), Y_TLM(N,NTLM),&
-                           RTOL_TLM(N,NTLM), ATOL_TLM(N,NTLM)
-   DOUBLE PRECISION, INTENT(IN) :: RTOL(N)
-   DOUBLE PRECISION, INTENT(IN) :: ATOL(N)
-   DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-   DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+  integer :: n, ntlm, nnzero
+   real(dp), intent(inout) :: y(n), y_tlm(n,ntlm),&
+                           rtol_tlm(n,ntlm), atol_tlm(n,ntlm)
+   real(dp), intent(in) :: rtol(n)
+   real(dp), intent(in) :: atol(n)
+   real(dp), intent(in) :: tin  ! start time
+   real(dp), intent(in) :: tout ! end time
 
-   INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-   DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-   INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-   DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-   INTEGER,          INTENT(OUT) :: IERR_U
+   integer,          intent(in)  :: icntrl_u(20)
+   real(dp), intent(in)  :: rcntrl_u(20)
+   integer,          intent(out) :: istatus_u(20)
+   real(dp), intent(out) :: rstatus_u(20)
+   integer,          intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -326,34 +397,34 @@ SUBROUTINE integrate_fatode_tlm_ros( TIN, TOUT, N, NTLM, NNZERO, Y, Y_TLM, ATOL_
      end subroutine hess_vec
   end interface
 
-  call INTEGRATE_TLM( N, NTLM, NNZERO, Y, Y_TLM, TIN, TOUT, ATOL_TLM, RTOL_TLM, &
-       ATOL, RTOL, FUN, JAC, HESS_VEC, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U )
+  call integrate_tlm( n, ntlm, nnzero, y, y_tlm, tin, tout, atol_tlm, rtol_tlm, &
+       atol, rtol, fun, jac, hess_vec, icntrl_u, rcntrl_u, istatus_u, rstatus_u )
 
-end SUBROUTINE integrate_fatode_tlm_ros
+end subroutine integrate_fatode_tlm_ros
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! TLM SDIRK module wrapper
+! tlm sdirk module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE integrate_fatode_tlm_sdirk( TIN, TOUT, N, NTLM, NNZERO, Y, Y_TLM, ATOL_TLM, RTOL_TLM, &
- ATOL, RTOL, FUN, JAC, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, IERR_U ) bind(c)
+subroutine integrate_fatode_tlm_sdirk( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_tlm, rtol_tlm, &
+ atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
-  use SDIRK_TLM_f90_Integrator
+  use sdirk_tlm_f90_integrator
   implicit none
 
-  INTEGER :: N, NTLM, NNZERO
-   DOUBLE PRECISION, INTENT(INOUT) :: Y(N), Y_TLM(N,NTLM),&
-                           RTOL_TLM(N,NTLM), ATOL_TLM(N,NTLM)
-   DOUBLE PRECISION, INTENT(IN) :: RTOL(N)
-   DOUBLE PRECISION, INTENT(IN) :: ATOL(N)
-   DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-   DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+  integer :: n, ntlm, nnzero
+   real(dp), intent(inout) :: y(n), y_tlm(n,ntlm),&
+                           rtol_tlm(n,ntlm), atol_tlm(n,ntlm)
+   real(dp), intent(in) :: rtol(n)
+   real(dp), intent(in) :: atol(n)
+   real(dp), intent(in) :: tin  ! start time
+   real(dp), intent(in) :: tout ! end time
 
-   INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-   DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-   INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-   DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-   INTEGER,          INTENT(OUT) :: IERR_U
+   integer,          intent(in)  :: icntrl_u(20)
+   real(dp), intent(in)  :: rcntrl_u(20)
+   integer,          intent(out) :: istatus_u(20)
+   real(dp), intent(out) :: rstatus_u(20)
+   integer,          intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -373,42 +444,42 @@ SUBROUTINE integrate_fatode_tlm_sdirk( TIN, TOUT, N, NTLM, NNZERO, Y, Y_TLM, ATO
      end subroutine jac
   end interface
 
-  call INTEGRATE_TLM( N, NTLM, NNZERO, Y, Y_TLM, TIN, TOUT, ATOL_TLM, RTOL_TLM, &
-       ATOL, RTOL, FUN, JAC, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, IERR_U )
+  call integrate_tlm( n, ntlm, nnzero, y, y_tlm, tin, tout, atol_tlm, rtol_tlm, &
+       atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
-end SUBROUTINE integrate_fatode_tlm_sdirk
+end subroutine integrate_fatode_tlm_sdirk
 
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! ! ADJ ERK module wrapper
+! ! adj erk module wrapper
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! SUBROUTINE integrate_fatode_adj_erk( TIN, TOUT, NVAR, NP, NADJ, NNZ, Y, Lambda, &
-!      ATOL, RTOL, FUN, JAC, AdjInit,  ICNTRL_U, RCNTRL_U, ISTATUS_U, &
-!      RSTATUS_U, Ierr_U, Mu, JACP, DRDY, DRDP, QFUN, Q ) bind(c)
+! subroutine integrate_fatode_adj_erk( tin, tout, nvar, np, nadj, nnz, y, lambda, &
+!      atol, rtol, fun, jac, adjinit,  icntrl_u, rcntrl_u, istatus_u, &
+!      rstatus_u, ierr_u, mu, jacp, drdy, drdp, qfun, q ) bind(c)
 
 !   use iso_c_binding
-!   use ERK_ADJ_f90_Integrator
+!   use erk_adj_f90_integrator
 !   implicit none
 
-!    INTEGER, INTENT(IN) :: NVAR,NP,NADJ
-!    INTEGER, INTENT(IN) :: NNZ
+!    integer, intent(in) :: nvar,np,nadj
+!    integer, intent(in) :: nnz
 
-!    DOUBLE PRECISION, INTENT(INOUT) :: Y(NVAR)
+!    real(dp), intent(inout) :: y(nvar)
 
-!    DOUBLE PRECISION, INTENT(INOUT) :: Q(NADJ)
-!    DOUBLE PRECISION, INTENT(INOUT)  :: Lambda(NVAR,NADJ)
-!    DOUBLE PRECISION, INTENT(INOUT) ::  Mu(NP, NADJ)
-!    DOUBLE PRECISION, INTENT(IN)  ::  ATOL(NVAR), RTOL(NVAR)
-!    DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-!    DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+!    real(dp), intent(inout) :: q(nadj)
+!    real(dp), intent(inout)  :: lambda(nvar,nadj)
+!    real(dp), intent(inout) ::  mu(np, nadj)
+!    real(dp), intent(in)  ::  atol(nvar), rtol(nvar)
+!    real(dp), intent(in) :: tin  ! start time
+!    real(dp), intent(in) :: tout ! end time
 
-!    INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-!    DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-!    INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-!    DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-!    INTEGER,          INTENT(OUT) :: Ierr_U
+!    integer,          intent(in)  :: icntrl_u(20)
+!    real(dp), intent(in)  :: rcntrl_u(20)
+!    integer,          intent(out) :: istatus_u(20)
+!    real(dp), intent(out) :: rstatus_u(20)
+!    integer,          intent(out) :: ierr_u
 
-!    DOUBLE PRECISION :: RCNTRL(20), RSTATUS(20), T1, T2
-!    INTEGER       :: ICNTRL(20), ISTATUS(20), Ierr
+!    double precision :: rcntrl(20), rstatus(20), t1, t2
+!    integer       :: icntrl(20), istatus(20), ierr
 
 !   interface
 !      subroutine fun(n, t, y, fy) bind (c)
@@ -438,79 +509,79 @@ end SUBROUTINE integrate_fatode_tlm_sdirk
 !   end interface
 
 !   interface
-!      subroutine DRDP(nadj,n,nr,t,y,rp) bind (c)
+!      subroutine drdp(nadj,n,nr,t,y,rp) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: nadj,n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: rp(nr,nadj)
-!      end subroutine DRDP
+!      end subroutine drdp
 !   end interface
   
 !   interface
-!      subroutine DRDY(nadj,n,nr,t,y,ry) bind (c)
+!      subroutine drdy(nadj,n,nr,t,y,ry) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: nadj,n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: ry(nr,nadj)
-!      end subroutine DRDY
+!      end subroutine drdy
 !   end interface
 
 !   interface
-!      subroutine JACP(n,np,t,y,fpjac) bind (c)
+!      subroutine jacp(n,np,t,y,fpjac) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: n,np
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: fpjac(n,np)
-!      end subroutine JACP
+!      end subroutine jacp
 !   end interface
 
 !   interface
-!      subroutine QFUN(n,nr,t,y,r) bind (c)
+!      subroutine qfun(n,nr,t,y,r) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: r(nr)
-!      end subroutine QFUN
+!      end subroutine qfun
 !   end interface
 
-!   call INTEGRATE_ADJ( NVAR, NP, NADJ, NNZ, Y, Lambda, TIN, TOUT, &
-!        ATOL, RTOL, FUN, JAC, AdjInit,  ICNTRL_U, RCNTRL_U, ISTATUS_U, &
-!        RSTATUS_U, Ierr_U, Mu, JACP, DRDY, DRDP, QFUN, Q )
+!   call integrate_adj( nvar, np, nadj, nnz, y, lambda, tin, tout, &
+!        atol, rtol, fun, jac, adjinit,  icntrl_u, rcntrl_u, istatus_u, &
+!        rstatus_u, ierr_u, mu, jacp, drdy, drdp, qfun, q )
 
-! end SUBROUTINE integrate_fatode_adj_erk
+! end subroutine integrate_fatode_adj_erk
 
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! ! ADJ RK module wrapper
+! ! adj rk module wrapper
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! SUBROUTINE integrate_fatode_adj_rk( TIN, TOUT, NVAR, NP, NADJ, NNZ, Y, Lambda, &
-!      ATOL_ADJ, RTOL_ADJ, ATOL, RTOL, FUN, JAC, AdjInit,  ICNTRL_U, RCNTRL_U, ISTATUS_U, &
-!      RSTATUS_U, Ierr_U, Mu, JACP, DRDY, DRDP, QFUN, Q ) bind(c)
+! subroutine integrate_fatode_adj_rk( tin, tout, nvar, np, nadj, nnz, y, lambda, &
+!      atol_adj, rtol_adj, atol, rtol, fun, jac, adjinit,  icntrl_u, rcntrl_u, istatus_u, &
+!      rstatus_u, ierr_u, mu, jacp, drdy, drdp, qfun, q ) bind(c)
 
 !   use iso_c_binding
-!   use RK_ADJ_f90_Integrator
+!   use rk_adj_f90_integrator
 !   implicit none
 
-!    INTEGER, INTENT(IN) :: NVAR,NP,NADJ
-!    INTEGER, INTENT(IN) :: NNZ
+!    integer, intent(in) :: nvar,np,nadj
+!    integer, intent(in) :: nnz
 
-!    DOUBLE PRECISION, INTENT(INOUT) :: Y(NVAR)
+!    real(dp), intent(inout) :: y(nvar)
 
-!    DOUBLE PRECISION, INTENT(INOUT) :: Q(NADJ)
-!    DOUBLE PRECISION, INTENT(INOUT)  :: Lambda(NVAR,NADJ)
-!    DOUBLE PRECISION, INTENT(INOUT) ::  Mu(NP, NADJ)
-!    DOUBLE PRECISION, INTENT(IN) :: ATOL_adj(NVAR,NADJ), RTOL_adj(NVAR,NADJ)
-!    DOUBLE PRECISION, INTENT(IN)  ::  ATOL(NVAR), RTOL(NVAR)
-!    DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-!    DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+!    real(dp), intent(inout) :: q(nadj)
+!    real(dp), intent(inout)  :: lambda(nvar,nadj)
+!    real(dp), intent(inout) ::  mu(np, nadj)
+!    real(dp), intent(in) :: atol_adj(nvar,nadj), rtol_adj(nvar,nadj)
+!    real(dp), intent(in)  ::  atol(nvar), rtol(nvar)
+!    real(dp), intent(in) :: tin  ! start time
+!    real(dp), intent(in) :: tout ! end time
 
-!    INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-!    DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-!    INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-!    DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-!    INTEGER,          INTENT(OUT) :: Ierr_U
+!    integer,          intent(in)  :: icntrl_u(20)
+!    real(dp), intent(in)  :: rcntrl_u(20)
+!    integer,          intent(out) :: istatus_u(20)
+!    real(dp), intent(out) :: rstatus_u(20)
+!    integer,          intent(out) :: ierr_u
 
-!    DOUBLE PRECISION :: RCNTRL(20), RSTATUS(20), T1, T2
-!    INTEGER       :: ICNTRL(20), ISTATUS(20), Ierr
+!    double precision :: rcntrl(20), rstatus(20), t1, t2
+!    integer       :: icntrl(20), istatus(20), ierr
 
 !   interface
 !      subroutine fun(n, t, y, fy) bind (c)
@@ -540,81 +611,81 @@ end SUBROUTINE integrate_fatode_tlm_sdirk
 !   end interface
 
 !   interface
-!      subroutine DRDP(nadj,n,nr,t,y,rp) bind (c)
+!      subroutine drdp(nadj,n,nr,t,y,rp) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: nadj,n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: rp(nr,nadj)
-!      end subroutine DRDP
+!      end subroutine drdp
 !   end interface
   
 !   interface
-!      subroutine DRDY(nadj,n,nr,t,y,ry) bind (c)
+!      subroutine drdy(nadj,n,nr,t,y,ry) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: nadj,n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: ry(nr,nadj)
-!      end subroutine DRDY
+!      end subroutine drdy
 !   end interface
 
 !   interface
-!      subroutine JACP(n,np,t,y,fpjac) bind (c)
+!      subroutine jacp(n,np,t,y,fpjac) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: n,np
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: fpjac(n,np)
-!      end subroutine JACP
+!      end subroutine jacp
 !   end interface
 
 !   interface
-!      subroutine QFUN(n,nr,t,y,r) bind (c)
+!      subroutine qfun(n,nr,t,y,r) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: r(nr)
-!      end subroutine QFUN
+!      end subroutine qfun
 !   end interface
 
-!   call INTEGRATE_ADJ(NVAR, NP, NADJ, NNZ, Y, Lambda, TIN, TOUT,  &
-!        ATOL_adj, RTOL_adj, ATOL, RTOL, FUN, JAC, AdjInit, ICNTRL_U, &
-!        RCNTRL_U, ISTATUS_U, RSTATUS_U, IERR_U, Mu, JACP, DRDY, DRDP, &
-!        QFUN, Q )
+!   call integrate_adj(nvar, np, nadj, nnz, y, lambda, tin, tout,  &
+!        atol_adj, rtol_adj, atol, rtol, fun, jac, adjinit, icntrl_u, &
+!        rcntrl_u, istatus_u, rstatus_u, ierr_u, mu, jacp, drdy, drdp, &
+!        qfun, q )
 
-! end SUBROUTINE integrate_fatode_adj_rk
+! end subroutine integrate_fatode_adj_rk
 
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! ! ADJ ROS module wrapper
+! ! adj ros module wrapper
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! SUBROUTINE integrate_fatode_adj_ros( TIN, TOUT, NVAR, NP, NADJ, NNZ, Y, Lambda, &
-!      ATOL_ADJ, RTOL_ADJ, ATOL, RTOL, FUN, JAC, AdjInit, HESSTR_VEC,&
-!      ICNTRL_U, RCNTRL_U, ISTATUS_U, &
-!      RSTATUS_U, Ierr_U, Mu, JACP, DRDY, DRDP, HESSTR_VEC_F_PY, HESSTR_VEC_R_PY, HESSTR_VEC_R, QFUN, Q ) bind(c)
+! subroutine integrate_fatode_adj_ros( tin, tout, nvar, np, nadj, nnz, y, lambda, &
+!      atol_adj, rtol_adj, atol, rtol, fun, jac, adjinit, hesstr_vec,&
+!      icntrl_u, rcntrl_u, istatus_u, &
+!      rstatus_u, ierr_u, mu, jacp, drdy, drdp, hesstr_vec_f_py, hesstr_vec_r_py, hesstr_vec_r, qfun, q ) bind(c)
 
 !   use iso_c_binding
-!   use ROS_ADJ_f90_Integrator
+!   use ros_adj_f90_integrator
 !   implicit none
 
-!    INTEGER, INTENT(IN) :: NVAR,NP,NADJ
-!    INTEGER, INTENT(IN) :: NNZ
+!    integer, intent(in) :: nvar,np,nadj
+!    integer, intent(in) :: nnz
 
-!    DOUBLE PRECISION, INTENT(INOUT) :: Y(NVAR)
+!    real(dp), intent(inout) :: y(nvar)
 
-!    DOUBLE PRECISION, INTENT(INOUT) :: Q(NADJ)
-!    DOUBLE PRECISION, INTENT(INOUT)  :: Lambda(NVAR,NADJ)
-!    DOUBLE PRECISION, INTENT(INOUT) ::  Mu(NP, NADJ)
-!    DOUBLE PRECISION, INTENT(IN) :: ATOL_adj(NVAR,NADJ), RTOL_adj(NVAR,NADJ)
-!    DOUBLE PRECISION, INTENT(IN)  ::  ATOL(NVAR), RTOL(NVAR)
-!    DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-!    DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+!    real(dp), intent(inout) :: q(nadj)
+!    real(dp), intent(inout)  :: lambda(nvar,nadj)
+!    real(dp), intent(inout) ::  mu(np, nadj)
+!    real(dp), intent(in) :: atol_adj(nvar,nadj), rtol_adj(nvar,nadj)
+!    real(dp), intent(in)  ::  atol(nvar), rtol(nvar)
+!    real(dp), intent(in) :: tin  ! start time
+!    real(dp), intent(in) :: tout ! end time
 
-!    INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-!    DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-!    INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-!    DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-!    INTEGER,          INTENT(OUT) :: Ierr_U
+!    integer,          intent(in)  :: icntrl_u(20)
+!    real(dp), intent(in)  :: rcntrl_u(20)
+!    integer,          intent(out) :: istatus_u(20)
+!    real(dp), intent(out) :: rstatus_u(20)
+!    integer,          intent(out) :: ierr_u
 
-!    DOUBLE PRECISION :: RCNTRL(20), RSTATUS(20), T1, T2
-!    INTEGER       :: ICNTRL(20), ISTATUS(20), Ierr
+!    double precision :: rcntrl(20), rstatus(20), t1, t2
+!    integer       :: icntrl(20), istatus(20), ierr
 
 !   interface
 !      subroutine fun(n, t, y, fy) bind (c)
@@ -644,39 +715,39 @@ end SUBROUTINE integrate_fatode_tlm_sdirk
 !   end interface
 
 !   interface
-!      subroutine DRDP(nadj,n,nr,t,y,rp) bind (c)
+!      subroutine drdp(nadj,n,nr,t,y,rp) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: nadj,n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: rp(nr,nadj)
-!      end subroutine DRDP
+!      end subroutine drdp
 !   end interface
   
 !   interface
-!      subroutine DRDY(nadj,n,nr,t,y,ry) bind (c)
+!      subroutine drdy(nadj,n,nr,t,y,ry) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: nadj,n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: ry(nr,nadj)
-!      end subroutine DRDY
+!      end subroutine drdy
 !   end interface
 
 !   interface
-!      subroutine JACP(n,np,t,y,fpjac) bind (c)
+!      subroutine jacp(n,np,t,y,fpjac) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: n,np
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: fpjac(n,np)
-!      end subroutine JACP
+!      end subroutine jacp
 !   end interface
 
 !   interface
-!      subroutine QFUN(n,nr,t,y,r) bind (c)
+!      subroutine qfun(n,nr,t,y,r) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: r(nr)
-!      end subroutine QFUN
+!      end subroutine qfun
 !   end interface
 
 !   interface
@@ -689,70 +760,70 @@ end SUBROUTINE integrate_fatode_tlm_sdirk
 !   end interface
 
 !   interface
-!      subroutine HESSTR_VEC_F_PY(ny,np,t,y,u,k,htvg) bind (c)
+!      subroutine hesstr_vec_f_py(ny,np,t,y,u,k,htvg) bind (c)
 !        use iso_c_binding
-!        ! htvg = (f_py x k)^T * u = (d(f_p^T * u)/dy) * k
+!        ! htvg = (f_py x k)^t * u = (d(f_p^t * u)/dy) * k
 !        integer :: ny,np
 !        double precision :: t,y(ny),u(ny),k(ny),htvg(np)
 !      end subroutine
 !   end interface
     
 !   interface
-!      subroutine HESSTR_VEC_R_PY(ny,np,t,y,u,k,htvr) bind (c)
+!      subroutine hesstr_vec_r_py(ny,np,t,y,u,k,htvr) bind (c)
 !        use iso_c_binding
-!        ! htvr = (f_py x k)^T * u = (d(f_p^T * u)/dy) * k
+!        ! htvr = (f_py x k)^t * u = (d(f_p^t * u)/dy) * k
 !        integer :: ny,np
 !        double precision :: t,y(ny),u(ny),k(ny),htvr(np)
-!      end SUBROUTINE
+!      end subroutine
 !   end interface
 
 !   interface
-!      subroutine HESSTR_VEC_R(ny,np,t,y,u,k,htvr) bind (c)
+!      subroutine hesstr_vec_r(ny,np,t,y,u,k,htvr) bind (c)
 !        use iso_c_binding
 !        integer :: ny,np
 !        double precision :: t,y(ny),u(ny),k(ny),htvr(np)
-!      end SUBROUTINE
+!      end subroutine
 !   end interface
 
-!   call INTEGRATE_ADJ( NVAR, NP, NADJ, NNZ,  Y, Lambda, Mu, TIN, TOUT,  &
-!        ATOL_adj, RTOL_adj, ATOL, RTOL, FUN, JAC, ADJINIT, HESSTR_VEC,     &
-!        JACP, DRDY, DRDP, HESSTR_VEC_F_PY, HESSTR_VEC_R_PY, HESSTR_VEC_R,  &
-!        ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Q, QFUN ) 
+!   call integrate_adj( nvar, np, nadj, nnz,  y, lambda, mu, tin, tout,  &
+!        atol_adj, rtol_adj, atol, rtol, fun, jac, adjinit, hesstr_vec,     &
+!        jacp, drdy, drdp, hesstr_vec_f_py, hesstr_vec_r_py, hesstr_vec_r,  &
+!        icntrl_u, rcntrl_u, istatus_u, rstatus_u, q, qfun ) 
 
-! end SUBROUTINE integrate_fatode_adj_ros
+! end subroutine integrate_fatode_adj_ros
 
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! ! ADJ SDIRK module wrapper
+! ! adj sdirk module wrapper
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! SUBROUTINE integrate_fatode_adj_sdirk( TIN, TOUT, NVAR, NP, NADJ, NNZ, Y, Lambda, &
-!      ATOL_ADJ, RTOL_ADJ, ATOL, RTOL, FUN, JAC, AdjInit,  ICNTRL_U, RCNTRL_U, ISTATUS_U, &
-!      RSTATUS_U, Ierr_U, Mu, JACP, DRDY, DRDP, QFUN, Q ) bind(c)
+! subroutine integrate_fatode_adj_sdirk( tin, tout, nvar, np, nadj, nnz, y, lambda, &
+!      atol_adj, rtol_adj, atol, rtol, fun, jac, adjinit,  icntrl_u, rcntrl_u, istatus_u, &
+!      rstatus_u, ierr_u, mu, jacp, drdy, drdp, qfun, q ) bind(c)
 
 !   use iso_c_binding
-!   use SDIRK_ADJ_f90_Integrator
+!   use sdirk_adj_f90_integrator
 !   implicit none
 
-!    INTEGER, INTENT(IN) :: NVAR,NP,NADJ
-!    INTEGER, INTENT(IN) :: NNZ
+!    integer, intent(in) :: nvar,np,nadj
+!    integer, intent(in) :: nnz
 
-!    DOUBLE PRECISION, INTENT(INOUT) :: Y(NVAR)
+!    real(dp), intent(inout) :: y(nvar)
 
-!    DOUBLE PRECISION, INTENT(INOUT) :: Q(NADJ)
-!    DOUBLE PRECISION, INTENT(INOUT)  :: Lambda(NVAR,NADJ)
-!    DOUBLE PRECISION, INTENT(INOUT) ::  Mu(NP, NADJ)
-!    DOUBLE PRECISION, INTENT(IN) :: ATOL_adj(NVAR,NADJ), RTOL_adj(NVAR,NADJ)
-!    DOUBLE PRECISION, INTENT(IN)  ::  ATOL(NVAR), RTOL(NVAR)
-!    DOUBLE PRECISION, INTENT(IN) :: TIN  ! Start Time
-!    DOUBLE PRECISION, INTENT(IN) :: TOUT ! End Time
+!    real(dp), intent(inout) :: q(nadj)
+!    real(dp), intent(inout)  :: lambda(nvar,nadj)
+!    real(dp), intent(inout) ::  mu(np, nadj)
+!    real(dp), intent(in) :: atol_adj(nvar,nadj), rtol_adj(nvar,nadj)
+!    real(dp), intent(in)  ::  atol(nvar), rtol(nvar)
+!    real(dp), intent(in) :: tin  ! start time
+!    real(dp), intent(in) :: tout ! end time
 
-!    INTEGER,          INTENT(IN)  :: ICNTRL_U(20)
-!    DOUBLE PRECISION, INTENT(IN)  :: RCNTRL_U(20)
-!    INTEGER,          INTENT(OUT) :: ISTATUS_U(20)
-!    DOUBLE PRECISION, INTENT(OUT) :: RSTATUS_U(20)
-!    INTEGER,          INTENT(OUT) :: Ierr_U
+!    integer,          intent(in)  :: icntrl_u(20)
+!    real(dp), intent(in)  :: rcntrl_u(20)
+!    integer,          intent(out) :: istatus_u(20)
+!    real(dp), intent(out) :: rstatus_u(20)
+!    integer,          intent(out) :: ierr_u
 
-!    DOUBLE PRECISION :: RCNTRL(20), RSTATUS(20), T1, T2
-!    INTEGER       :: ICNTRL(20), ISTATUS(20), Ierr
+!    double precision :: rcntrl(20), rstatus(20), t1, t2
+!    integer       :: icntrl(20), istatus(20), ierr
 
 !   interface
 !      subroutine fun(n, t, y, fy) bind (c)
@@ -782,43 +853,44 @@ end SUBROUTINE integrate_fatode_tlm_sdirk
 !   end interface
 
 !   interface
-!      subroutine DRDP(nadj,n,nr,t,y,rp) bind (c)
+!      subroutine drdp(nadj,n,nr,t,y,rp) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: nadj,n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: rp(nr,nadj)
-!      end subroutine DRDP
+!      end subroutine drdp
 !   end interface
   
 !   interface
-!      subroutine DRDY(nadj,n,nr,t,y,ry) bind (c)
+!      subroutine drdy(nadj,n,nr,t,y,ry) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: nadj,n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: ry(nr,nadj)
-!      end subroutine DRDY
+!      end subroutine drdy
 !   end interface
 
 !   interface
-!      subroutine JACP(n,np,t,y,fpjac) bind (c)
+!      subroutine jacp(n,np,t,y,fpjac) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: n,np
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: fpjac(n,np)
-!      end subroutine JACP
+!      end subroutine jacp
 !   end interface
 
 !   interface
-!      subroutine QFUN(n,nr,t,y,r) bind (c)
+!      subroutine qfun(n,nr,t,y,r) bind (c)
 !        use iso_c_binding
 !        integer, intent(in) :: n,nr
 !        double precision, intent(in)    :: t,y(n)
 !        double precision, intent(inout) :: r(nr)
-!      end subroutine QFUN
+!      end subroutine qfun
 !   end interface
 
-!   call INTEGRATE_ADJ( NVAR, NP, NADJ, NNZ, Y, Lambda, Mu, TIN, TOUT, &
-!        ATOL_adj, RTOL_adj, ATOL, RTOL, FUN, JAC, ADJINIT, JACP, DRDY, &
-!        DRDP, ICNTRL_U, RCNTRL_U, ISTATUS_U, RSTATUS_U, Ierr_U, Q, QFUN )
+!   call integrate_adj( nvar, np, nadj, nnz, y, lambda, mu, tin, tout, &
+!        atol_adj, rtol_adj, atol, rtol, fun, jac, adjinit, jacp, drdy, &
+!        drdp, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u, q, qfun )
 
-! end SUBROUTINE integrate_fatode_adj_sdirk
+! end subroutine integrate_fatode_adj_sdirk
+end module fatode_c

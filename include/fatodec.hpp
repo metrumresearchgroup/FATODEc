@@ -13,6 +13,15 @@ extern "C" {
                                  int istatus_u[], double rstatus_u[],
                                  int* ierr_u );
 
+  void integrate_fatode_fwd_erk_cc( double* tin, double* tout,
+                                    int* nvar, double var[],
+                                    double rtol[], double atol[],
+                                    void (*fun) (int*, double*, double[], double[], void* user_data),
+                                    int icntrl_u[], double rcntrl_u[],
+                                    int istatus_u[], double rstatus_u[],
+                                    int* ierr_u,
+                                    void* user_data );
+
   void integrate_fatode_fwd_rk( double* tin, double* tout,
                                 int* nvar, int* nnzero, double var[],
                                 double rtol[], double atol[],
@@ -157,17 +166,5 @@ extern "C" {
   //                                   double q[] );
 
 }
-
-void integrate_ode_fwd_erk( double tin, double tout,
-                            int nvar,
-                            std::vector<double>& var,
-                            std::vector<double>& rtol,
-                            std::vector<double>& atol,
-                            void (*fun) (int*, double*, double[], double[]),
-                            std::vector<int>& icntrl_u,
-                            std::vector<double>& rcntrl_u,
-                            std::vector<int>& istatus_u,
-                            std::vector<double>& rstatus_u,
-                            int ierr_u );
 
 #endif

@@ -1,4 +1,5 @@
 #include <fatodec.hpp>
+#include <fatode_cc.hpp>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
@@ -19,6 +20,18 @@ static void fsho_jac(int* n, double* t, double y[], double fjac[]) {
   fjac[2] = 1.0;
   fjac[3] = -theta;
 }
+
+struct ShoFunctor{
+  inline std::vector<double>
+  operator()(const double& t_in, const std::vector<double>& y_in,
+             const std::vector<double>& theta, const std::vector<double>& x_r,
+             const std::vector<int>& x_i, std::ostream* msgs) const {
+    std::vector<double> res;
+    res.push_back(y_in.at(1));
+    res.push_back(-y_in.at(0) - theta.at(0) * y_in.at(1));
+    return res;
+  }
+};
 
 struct FATOdeBindingTest : public testing::Test {
   double tin;
@@ -77,9 +90,19 @@ TEST_F(FATOdeBindingTest, FWD_ERK) {
   EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
   EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
 
-  fy[0] = 0.0;
+  // integrate_ode_fwd_erk( tin, tout, n, fy, rtol, atol, fsho, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u );
+  // EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
+  // EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
+
+
+  fy[0] = 0.0;                  // reset init condition
   fy[1] = 1.0;
-  integrate_ode_fwd_erk( tin, tout, n, fy, rtol, atol, fsho, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u );
+  ShoFunctor f;
+  std::vector<double> theta{0.15};
+  std::vector<double> x_r;
+  std::vector<int> x_i;
+  fatode_cc::integrate_ode_fwd_erk( tin, tout, n, fy, rtol, atol, f, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
+                         theta, x_r, x_i, nullptr );
   EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
   EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
 }
