@@ -46,6 +46,11 @@ struct FATOdeBindingTest : public testing::Test {
   std::vector<int> istatus_u;
   std::vector<double> rstatus_u;
   int ierr_u;
+  ShoFunctor f;
+  std::vector<double> theta;
+  std::vector<double> x_r;
+  std::vector<int> x_i;
+  std::ostream* msgs;
 
   void SetUp() {
   }
@@ -61,7 +66,9 @@ struct FATOdeBindingTest : public testing::Test {
     rcntrl_u(20),
     istatus_u(20),
     rstatus_u(20),
-    ierr_u(0) {
+    ierr_u(0),
+    theta{0.15},
+    msgs(nullptr) {
       // control defaults
       icntrl_u[0] = 0;
       icntrl_u[1] = 0;
@@ -90,19 +97,10 @@ TEST_F(FATOdeBindingTest, FWD_ERK) {
   EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
   EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
 
-  // integrate_ode_fwd_erk( tin, tout, n, fy, rtol, atol, fsho, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u );
-  // EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
-  // EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
-
-
   fy[0] = 0.0;                  // reset init condition
   fy[1] = 1.0;
-  ShoFunctor f;
-  std::vector<double> theta{0.15};
-  std::vector<double> x_r;
-  std::vector<int> x_i;
   fatode_cc::integrate_ode_fwd_erk( tin, tout, n, fy, rtol, atol, f, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
-                         theta, x_r, x_i, nullptr );
+                         theta, x_r, x_i, msgs );
   EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
   EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
 }
