@@ -99,17 +99,19 @@ make test; ./test
 
 * Use
 
-Use C header =FATODEc/include/fatodec.h= or C++ header =FATODEc/include/fatodec.hpp=.
+Use C header =FATODEc/include/fatodec.h= or C++ header =FATODEc/include/fatode_cc.hpp=.
+The C++ interface is in namespace =fatode_cc=.
+
 ** Forward integration solvers(FWD)
-- Explicit Runge-Kutta =integrate_fatode_fwd_erk=
-- Fully Implicit Runge-Kutta methods =integrate_fatode_fwd_rk=
-- Rosenbrock methods =integrate_fatode_fwd_ros=
-- Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_fwd_sdirk=
+- Explicit Runge-Kutta =integrate_fatode_fwd_erk= (C & C++)
+- Fully Implicit Runge-Kutta methods =integrate_fatode_fwd_rk= (C & C++)
+- Rosenbrock methods =integrate_fatode_fwd_ros= (C)
+- Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_fwd_sdirk= (C)
 
 ** Tangential linear model(TLM)
-- Explicit Runge-Kutta =integrate_fatode_tlm_erk=
-- Rosenbrock methods =integrate_fatode_tlm_ros=
-- Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_tlm_sdirk=
+- Explicit Runge-Kutta =integrate_fatode_tlm_erk= (C)
+- Rosenbrock methods =integrate_fatode_tlm_ros= (C)
+- Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_tlm_sdirk= (C)
 
 * TO-DO
 ** Tangential linear model(TLM)
