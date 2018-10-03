@@ -10,6 +10,10 @@
  */
 namespace fatode_cc {
 
+  /*
+   * return a lambda that can be passed to Fortran function
+   * @c xxx_cc to calculate RHS vector.
+   */
   template<typename Ode>
   auto fatode_fun() {
     return [](int* n, double* t, double y[], double fy[],
@@ -24,6 +28,24 @@ namespace fatode_cc {
     };
   }
   
+  /*
+   * return a lambda that can be passed to Fortran function
+   * @c xxx_cc to calculate Jacobi matrix.
+   */
+  template<typename OdeJac>
+  auto fatode_jac() {
+    return [](int* n, double* t, double y[], double fjac[],
+              void* user_data) {
+      OdeJac* jac = static_cast<OdeJac*>(user_data);
+      std::vector<double> yv(y, y + *n);
+      std::vector<double> fjacv((*n) * (*n));
+      fjacv = jac -> f(*t, yv, jac -> theta, jac -> x_r, jac -> x_i, jac -> msgs);
+      for (int i = 0; i < (*n) * (*n); ++i) {
+        fjac[i] = fjacv[i];
+      }
+    };
+  }
+
 }
 
 

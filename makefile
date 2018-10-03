@@ -45,8 +45,8 @@ $(LIB_FATODE_DIR)/src/%.o : $(LIB_FATODE_DIR)/src/%.F90
 	$(FC) $(FFLAGS) $(CPPFLAGS) -J$(dir $@) -c $< -o $@
 
 CXXFLAGS = -I$(LIB_FATODE_DIR)/include -std=c++14
-$(LIB_FATODE_DIR)/src/fatode_cc.o : $(LIB_FATODE_DIR)/src/fatode_cc.cpp
-	$(COMPILE.cc) -o $@ $^
+# $(LIB_FATODE_DIR)/src/fatode_cc.o : $(LIB_FATODE_DIR)/src/fatode_cc.cpp
+# 	$(COMPILE.cc) -o $@ $^
 
 FAT_FWD_OBJS := $(patsubst %.F90, %.o, $(shell find $(LIB_FATODE_DIR)/src/FWD -name *.F90))
 FAT_TLM_OBJS := $(patsubst %.F90, %.o, $(shell find $(LIB_FATODE_DIR)/src/TLM -name *.F90))
@@ -55,7 +55,7 @@ FAT_WRAPPER  := $(LIB_FATODE_DIR)/src/integrate_fatode.o
 $(FAT_WRAPPER) : $(FAT_FWD_OBJS) $(FAT_TLM_OBJS)
 
 FAT_OBJS := $(FAT_WRAPPER) $(FAT_FWD_OBJS) $(FAT_TLM_OBJS) # $(FAT_ADJ_OBJS)
-FAT_OBJS += $(LIB_FATODE_DIR)/src/fatode_cc.o
+# FAT_OBJS += $(LIB_FATODE_DIR)/src/fatode_cc.o
 $(LIB_FATODE_DIR)/libfatode.a : $(FAT_OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 

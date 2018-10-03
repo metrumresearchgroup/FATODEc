@@ -33,6 +33,16 @@ struct ShoFunctor{
   }
 };
 
+struct ShoJacobiFunctor{
+  inline std::vector<double>
+  operator()(const double& t_in, const std::vector<double>& y_in,
+             const std::vector<double>& theta, const std::vector<double>& x_r,
+             const std::vector<int>& x_i, std::ostream* msgs) const {
+    std::vector<double> res {0.0, -1.0, 1.0, -theta.at(0)};
+    return res;
+  }
+};
+
 struct FATOdeBindingTest : public testing::Test {
   double tin;
   double tout;
@@ -47,6 +57,7 @@ struct FATOdeBindingTest : public testing::Test {
   std::vector<double> rstatus_u;
   int ierr_u;
   ShoFunctor f;
+  ShoJacobiFunctor fj;
   std::vector<double> theta;
   std::vector<double> x_r;
   std::vector<int> x_i;
@@ -119,6 +130,13 @@ TEST_F(FATOdeBindingTest, FWD_rk) {
   const std::vector<double> fy_sol {-0.465583533, 0.5054222670};
   EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
   EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
+
+  fy[0] = 0.0;                  // reset init condition
+  fy[1] = 1.0;
+  fatode_cc::integrate_ode_fwd_rk( tin, tout, n, nnzero, fy, rtol, atol, f, fj, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
+                                   theta, x_r, x_i, msgs );
+  EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
+  EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);  
 }
 
 TEST_F(FATOdeBindingTest, FWD_ros) {

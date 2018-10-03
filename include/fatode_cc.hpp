@@ -2,5 +2,6 @@
 #define FACODE_CC_HPP
 
 #include <integrate_ode_fwd_erk.hpp>
+#include <integrate_ode_fwd_rk.hpp>
 
 #endif
