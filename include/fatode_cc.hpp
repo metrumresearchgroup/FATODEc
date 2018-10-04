@@ -3,5 +3,6 @@
 
 #include <integrate_ode_fwd_erk.hpp>
 #include <integrate_ode_fwd_rk.hpp>
+#include <integrate_ode_fwd_ros.hpp>
 
 #endif

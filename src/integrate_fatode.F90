@@ -285,6 +285,88 @@ subroutine integrate_fatode_fwd_ros( tin, tout, n, nnzero, var, rtol, atol, fun,
 end subroutine integrate_fatode_fwd_ros
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! fwd ros module wrapper for C++
+!
+! func_cc has signature
+! void func_cc(int* n, double* t, double y[], double fy[],
+!              double theta[], double x_r[], int x_i[] )
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine integrate_fatode_fwd_ros_cc( tin, tout, n, nnzero, var, rtol, atol, fun_cc, jac_cc, &
+     icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,&
+     & fy_user_data, fjac_user_data ) bind(c)
+
+  use iso_c_binding
+  use ros_f90_integrator
+  implicit none
+
+  integer, intent(in) :: n, nnzero
+  real(dp), intent(inout) :: var(n)
+  real(dp), intent(in) :: rtol(n)
+  real(dp), intent(in) :: atol(n)
+  real(dp), intent(in) :: tin  ! start time
+  real(dp), intent(in) :: tout ! end time
+
+  ! control and output
+  integer,  intent(in)  :: icntrl_u(20)
+  real(dp), intent(in)  :: rcntrl_u(20)
+  integer,  intent(out) :: istatus_u(20)
+  real(dp), intent(out) :: rstatus_u(20)
+  integer,  intent(out) :: ierr_u
+
+  ! c++ functor inputs
+  type(c_ptr), intent(inout) :: fy_user_data;
+  type(c_ptr), intent(inout) :: fjac_user_data;
+
+  interface
+     subroutine func_cc(n, t, y, fy, user_data) bind (c)
+       use iso_c_binding
+       integer, parameter:: dp=kind(0.d0)
+
+       integer,  intent(in) :: n
+       real(dp), intent(in) :: t, y(n)
+       real(dp), intent(inout) :: fy(n)
+       type(c_ptr), intent(inout) :: user_data;
+     end subroutine func_cc
+  end interface
+
+  interface
+     subroutine fjac_cc(n, t, y, fjac, user_data) bind (c)
+       use iso_c_binding
+       integer, parameter:: dp=kind(0.d0)
+
+       integer,  intent(in) :: n
+       real(dp), intent(in) :: t, y(n)
+       real(dp), intent(inout) :: fjac(n, n)
+       type(c_ptr), intent(inout) :: user_data;
+     end subroutine fjac_cc
+  end interface
+
+  procedure(func_cc) :: fun_cc
+  procedure(fjac_cc) :: jac_cc
+
+  call integrate( tin, tout, n, nnzero, var, rtol, atol, fun, jac, &
+       icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
+
+contains
+  subroutine fun(n, t, y, fy) bind (c)
+    use iso_c_binding
+    integer, intent(in) :: n
+    double precision, intent(in) :: t, y(n)
+    double precision, intent(inout) :: fy(n)
+    call fun_cc(n, t, y, fy, fy_user_data)
+  end subroutine fun
+
+  subroutine jac(n, t, y, fjac) bind (c)
+    use iso_c_binding
+    integer, intent(in) :: n
+    double precision, intent(in) :: t, y(n)
+    double precision, intent(inout) :: fjac(n, n)
+    call jac_cc(n, t, y, fjac, fjac_user_data)
+  end subroutine jac
+
+end subroutine integrate_fatode_fwd_ros_cc
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! fwd sdirk module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine integrate_fatode_fwd_sdirk( tin, tout, n, nnzero, var, rtol, atol, fun, jac, &

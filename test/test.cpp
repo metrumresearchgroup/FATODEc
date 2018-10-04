@@ -153,6 +153,13 @@ TEST_F(FATOdeBindingTest, FWD_ros) {
   integrate_fatode_fwd_ros( &tin, &tout, &n, &nnzero, fy.data(), rtol.data(), atol.data(), fsho, fsho_jac, icntrl_u.data(), rcntrl_u.data(), istatus_u.data(), rstatus_u.data(), &ierr_u );
   EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
   EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
+
+  fy[0] = 0.0;                  // reset init condition
+  fy[1] = 1.0;
+  fatode_cc::integrate_ode_fwd_ros( tin, tout, n, nnzero, fy, rtol, atol, f, fj, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
+                                   theta, x_r, x_i, msgs );
+  EXPECT_FLOAT_EQ(fy[0], fy_sol[0]);
+  EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);  
 }
 
 TEST_F(FATOdeBindingTest, FWD_sdirk) {
