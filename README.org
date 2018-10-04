@@ -77,7 +77,7 @@ One can find the following example in =example/sho=. Consult
 #+END_SRC
 
 Sample output
-#+BEGIN_SRC bash
+#+BEGIN_SRC text
   No. of function calls                          :  728
   No. of jacobian calls                          :  0
   No. of steps                                   :  104
