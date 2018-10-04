@@ -109,13 +109,13 @@ The C++ interface is in namespace =fatode_cc=.
 - Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_fwd_sdirk= (C & C++)
 
 ** Tangential linear model(TLM)
-- Explicit Runge-Kutta =integrate_fatode_tlm_erk= (C)
-- Rosenbrock methods =integrate_fatode_tlm_ros= (C)
-- Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_tlm_sdirk= (C)
+- Explicit Runge-Kutta =integrate_fatode_tlm_erk= (C & C++)
 
 * TO-DO
 ** Tangential linear model(TLM)
 - Fully Implicit Runge-Kutta methods =integrate_fatode_tlm_rk=
+- Rosenbrock methods =integrate_fatode_tlm_ros=
+- Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_tlm_sdirk=
 
 ** Adjoint sensitivity solvers(ADJ)
 - Explicit Runge-Kutta =integrate_fatode_adj_erk=

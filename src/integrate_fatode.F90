@@ -514,11 +514,11 @@ subroutine integrate_fatode_tlm_erk( tin, tout, nvar, ntlm, var, var_tlm, atol_t
    real(dp), intent(in) :: tin  ! start time
    real(dp), intent(in) :: tout ! end time
 
-   integer,          intent(in)  :: icntrl_u(20)
+   integer,  intent(in)  :: icntrl_u(20)
    real(dp), intent(in)  :: rcntrl_u(20)
-   integer,          intent(out) :: istatus_u(20)
+   integer,  intent(out) :: istatus_u(20)
    real(dp), intent(out) :: rstatus_u(20)
-   integer,          intent(out) :: ierr_u
+   integer,  intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -543,6 +543,90 @@ subroutine integrate_fatode_tlm_erk( tin, tout, nvar, ntlm, var, var_tlm, atol_t
        fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
 end subroutine integrate_fatode_tlm_erk
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! fwd erk module wrapper for C++
+!
+! func_cc has signature
+! void func_cc(int* n, double* t, double y[], double fy[],
+!              double theta[], double x_r[], int x_i[] )
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine integrate_fatode_tlm_erk_cc( tin, tout, nvar, ntlm,&
+     & var, var_tlm, atol_tlm, rtol_tlm, atol, rtol,&
+     & fun_cc, jac_cc, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,&
+     & fy_user_data, fjac_user_data ) bind(c)
+
+  use iso_c_binding
+  use erk_tlm_f90_integrator
+  implicit none
+
+   integer, intent(in) :: nvar,ntlm
+   real(dp), intent(inout) :: var(nvar),var_tlm(nvar,ntlm),&
+                           rtol_tlm(nvar,ntlm), atol_tlm(nvar,ntlm)
+   real(dp), intent(in) :: rtol(nvar)
+   real(dp), intent(in) :: atol(nvar)
+   real(dp), intent(in) :: tin  ! start time
+   real(dp), intent(in) :: tout ! end time
+
+   integer,  intent(in)  :: icntrl_u(20)
+   real(dp), intent(in)  :: rcntrl_u(20)
+   integer,  intent(out) :: istatus_u(20)
+   real(dp), intent(out) :: rstatus_u(20)
+   integer,  intent(out) :: ierr_u
+
+  ! c++ functor inputs
+  type(c_ptr), intent(inout) :: fy_user_data;
+  type(c_ptr), intent(inout) :: fjac_user_data;
+
+  interface
+     subroutine func_cc(n, t, y, fy, user_data) bind (c)
+       use iso_c_binding
+       integer, parameter:: dp=kind(0.d0)
+
+       integer,  intent(in) :: n
+       real(dp), intent(in) :: t, y(n)
+       real(dp), intent(inout) :: fy(n)
+       type(c_ptr), intent(inout) :: user_data;
+     end subroutine func_cc
+  end interface
+
+  interface
+     subroutine fjac_cc(n, t, y, fjac, user_data) bind (c)
+       use iso_c_binding
+       integer, parameter:: dp=kind(0.d0)
+
+       integer,  intent(in) :: n
+       real(dp), intent(in) :: t, y(n)
+       real(dp), intent(inout) :: fjac(n, n)
+       type(c_ptr), intent(inout) :: user_data;
+     end subroutine fjac_cc
+  end interface
+
+  procedure(func_cc) :: fun_cc
+  procedure(fjac_cc) :: jac_cc
+
+  call integrate_tlm(tin, tout, nvar, ntlm, var, var_tlm, atol_tlm, &
+       rtol_tlm, atol, rtol,&
+       fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
+
+contains
+  subroutine fun(n, t, y, fy) bind (c)
+    use iso_c_binding
+    integer, intent(in) :: n
+    double precision, intent(in) :: t, y(n)
+    double precision, intent(inout) :: fy(n)
+    call fun_cc(n, t, y, fy, fy_user_data)
+  end subroutine fun
+
+  subroutine jac(n, t, y, fjac) bind (c)
+    use iso_c_binding
+    integer, intent(in) :: n
+    double precision, intent(in) :: t, y(n)
+    double precision, intent(inout) :: fjac(n, n)
+    call jac_cc(n, t, y, fjac, fjac_user_data)
+  end subroutine jac
+
+end subroutine integrate_fatode_tlm_erk_cc
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! tlm rk module wrapper
@@ -651,7 +735,7 @@ end subroutine integrate_fatode_tlm_ros
 ! tlm sdirk module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine integrate_fatode_tlm_sdirk( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_tlm, rtol_tlm, &
- atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
+     & atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
   use sdirk_tlm_f90_integrator
@@ -665,11 +749,11 @@ subroutine integrate_fatode_tlm_sdirk( tin, tout, n, ntlm, nnzero, y, y_tlm, ato
    real(dp), intent(in) :: tin  ! start time
    real(dp), intent(in) :: tout ! end time
 
-   integer,          intent(in)  :: icntrl_u(20)
+   integer,  intent(in)  :: icntrl_u(20)
    real(dp), intent(in)  :: rcntrl_u(20)
-   integer,          intent(out) :: istatus_u(20)
+   integer,  intent(out) :: istatus_u(20)
    real(dp), intent(out) :: rstatus_u(20)
-   integer,          intent(out) :: ierr_u
+   integer,  intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -693,6 +777,89 @@ subroutine integrate_fatode_tlm_sdirk( tin, tout, n, ntlm, nnzero, y, y_tlm, ato
        atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
 
 end subroutine integrate_fatode_tlm_sdirk
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! tlm sdirk module wrapper for C++
+!
+! func_cc has signature
+! void func_cc(int* n, double* t, double y[], double fy[],
+!              double theta[], double x_r[], int x_i[] )
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine integrate_fatode_tlm_sdirk_cc( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_tlm, rtol_tlm, &
+     & atol, rtol, fun_cc, jac_cc, icntrl_u, rcntrl_u,&
+     & istatus_u, rstatus_u, ierr_u, &
+     & fy_user_data, fjac_user_data ) bind(c)
+
+  use iso_c_binding
+  use sdirk_tlm_f90_integrator
+  implicit none
+
+  integer :: n, ntlm, nnzero
+   real(dp), intent(inout) :: y(n), y_tlm(n,ntlm),&
+                           rtol_tlm(n,ntlm), atol_tlm(n,ntlm)
+   real(dp), intent(in) :: rtol(n)
+   real(dp), intent(in) :: atol(n)
+   real(dp), intent(in) :: tin  ! start time
+   real(dp), intent(in) :: tout ! end time
+
+   integer,  intent(in)  :: icntrl_u(20)
+   real(dp), intent(in)  :: rcntrl_u(20)
+   integer,  intent(out) :: istatus_u(20)
+   real(dp), intent(out) :: rstatus_u(20)
+   integer,  intent(out) :: ierr_u
+
+  ! c++ functor inputs
+  type(c_ptr), intent(inout) :: fy_user_data;
+  type(c_ptr), intent(inout) :: fjac_user_data;
+
+  interface
+     subroutine func_cc(n, t, y, fy, user_data) bind (c)
+       use iso_c_binding
+       integer, parameter:: dp=kind(0.d0)
+
+       integer,  intent(in) :: n
+       real(dp), intent(in) :: t, y(n)
+       real(dp), intent(inout) :: fy(n)
+       type(c_ptr), intent(inout) :: user_data;
+     end subroutine func_cc
+  end interface
+
+  interface
+     subroutine fjac_cc(n, t, y, fjac, user_data) bind (c)
+       use iso_c_binding
+       integer, parameter:: dp=kind(0.d0)
+
+       integer,  intent(in) :: n
+       real(dp), intent(in) :: t, y(n)
+       real(dp), intent(inout) :: fjac(n, n)
+       type(c_ptr), intent(inout) :: user_data;
+     end subroutine fjac_cc
+  end interface
+
+  procedure(func_cc) :: fun_cc
+  procedure(fjac_cc) :: jac_cc
+
+  call integrate_tlm( n, ntlm, nnzero, y, y_tlm, tin, tout, atol_tlm, rtol_tlm, &
+       atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u )
+
+contains
+  subroutine fun(n, t, y, fy) bind (c)
+    use iso_c_binding
+    integer, intent(in) :: n
+    double precision, intent(in) :: t, y(n)
+    double precision, intent(inout) :: fy(n)
+    call fun_cc(n, t, y, fy, fy_user_data)
+  end subroutine fun
+
+  subroutine jac(n, t, y, fjac) bind (c)
+    use iso_c_binding
+    integer, intent(in) :: n
+    double precision, intent(in) :: t, y(n)
+    double precision, intent(inout) :: fjac(n, n)
+    call jac_cc(n, t, y, fjac, fjac_user_data)
+  end subroutine jac
+
+end subroutine integrate_fatode_tlm_sdirk_cc
 
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! ! adj erk module wrapper
