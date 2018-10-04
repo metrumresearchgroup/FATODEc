@@ -105,8 +105,8 @@ The C++ interface is in namespace =fatode_cc=.
 ** Forward integration solvers(FWD)
 - Explicit Runge-Kutta =integrate_fatode_fwd_erk= (C & C++)
 - Fully Implicit Runge-Kutta methods =integrate_fatode_fwd_rk= (C & C++)
-- Rosenbrock methods =integrate_fatode_fwd_ros= (C)
-- Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_fwd_sdirk= (C)
+- Rosenbrock methods =integrate_fatode_fwd_ros= (C & C++)
+- Singly Diagonally Implicit Runge-Kutta methods =integrate_fatode_fwd_sdirk= (C & C++)
 
 ** Tangential linear model(TLM)
 - Explicit Runge-Kutta =integrate_fatode_tlm_erk= (C)
