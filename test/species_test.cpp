@@ -25,12 +25,14 @@ static void fspc_jac(int* n, double* t, double y[], double fjac[]) {
   fjac[3] = -2.0 * c2[0]/c2[1] * y[1]; // df1/dy1
 }
 
-// static void fspc_hess(int* n, double* t, double y[], double u[], double v[], double hv[]) {
-//   hv[0] = 0.0;
-//   hv[1] = 0.0;
-//   hv[2] = 0.0;
-//   hv[3] = 0.0;
-// }
+static void fspc_hess(int* n, double* t, double y[], double u[], double v[], double hv[]) {
+  const std::vector<double> c1{1.0, 1.0, 1.0};
+  const std::vector<double> c2{0.75, 0.75, 0.6666666667};
+  hv[0] = -2.0 * c1[0]/c1[1] * u[0] * v[0] - c1[0] * c1[2] * u[0] * v[1]
+    - c1[0] * c1[2] * u[1] * v[0];
+  hv[1] = -2.0 * c2[0]/c2[1] * u[1] * v[1] - c2[0] * c2[2] * u[0] * v[1]
+    -c2[0] * c2[2] * u[1] * v[0];
+}
 
 struct SpcFunctor {
   inline std::vector<double>
@@ -64,6 +66,26 @@ struct SpcJacobiFunctor{
   }
 };
 
+struct SpcHessianFunctor {
+  inline std::vector<double>
+  operator()(const double& t_in, const std::vector<double>& y_in,
+             const std::vector<double>& u_in,
+             const std::vector<double>& v_in,
+             const std::vector<double>& theta, const std::vector<double>& x_r,
+             const std::vector<int>& x_i, std::ostream* msgs) const {
+    std::vector<double> hv(2);
+    const std::vector<double> c1{theta[0], theta[1], theta[2]};
+    const std::vector<double> c2{theta[3], theta[4], theta[5]};
+    const std::vector<double>& u(u_in);
+    const std::vector<double>& v(v_in);
+    hv[0] = -2.0 * c1[0]/c1[1] * u[0] * v[0] - c1[0] * c1[2] * u[0] * v[1]
+      - c1[0] * c1[2] * u[1] * v[0];
+    hv[1] = -2.0 * c2[0]/c2[1] * u[1] * v[1] - c2[0] * c2[2] * u[0] * v[1]
+      -c2[0] * c2[2] * u[1] * v[0];
+    return hv;
+  }
+};
+
 /*
  * single harmonic oscillator test.
  * In TLM methods the sensitivity is calclated w.r.t. the
@@ -90,6 +112,7 @@ struct FATODEBindingTest_spc : public testing::Test {
   int ierr_u;
   SpcFunctor f;
   SpcJacobiFunctor fj;
+  SpcHessianFunctor fh;
   std::vector<double> theta;
   std::vector<double> x_r;
   std::vector<int> x_i;
@@ -172,4 +195,31 @@ TEST_F(FATODEBindingTest_spc, FWD_sdirk) {
   fatode_cc::integrate_ode_fwd_sdirk( tin, tout, n, nnzero, fy, rtol, atol, f, fj, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
                                    theta, x_r, x_i, msgs );
   for (int i = 0; i < n; ++i) EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
+}
+
+TEST_F(FATODEBindingTest_spc, TLM_ros) {
+  nnzero = 4;
+  icntrl_u[3] = 0;
+
+  const std::vector<double> fy_sol {0.5438158804, 0.6387788157};
+  const std::vector<double> y_tlm_sol {0.02072822873, -0.01255963875, -0.04409122583, 0.03101172573};
+
+  integrate_fatode_tlm_ros( &tin, &tout, &n, &ntlm, &nnzero,
+                            fy.data(), y_tlm.data(),
+                            rtol_tlm.data(), atol_tlm.data(),
+                            rtol.data(), atol.data(),
+                            fspc, fspc_jac, fspc_hess,
+                            icntrl_u.data(), rcntrl_u.data(), istatus_u.data(), rstatus_u.data(), &ierr_u );
+  for (int i = 0; i < n; ++i)     EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
+  for (int i = 0; i < n * n; ++i) EXPECT_FLOAT_EQ(y_tlm[i], y_tlm_sol[i]);
+
+  // reset init condition
+  fy = init;
+  y_tlm = init_tlm;
+  fatode_cc::integrate_ode_tlm_ros( tin, tout, n, ntlm, nnzero, fy, y_tlm,
+                                    rtol_tlm, atol_tlm, rtol, atol,
+                                    f, fj, fh, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
+                                    theta, x_r, x_i, msgs );
+  for (int i = 0; i < n; ++i)     EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
+  for (int i = 0; i < n * n; ++i) EXPECT_FLOAT_EQ(y_tlm[i], y_tlm_sol[i]);
 }
