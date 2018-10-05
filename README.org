@@ -93,8 +93,8 @@ Sample output
 
 * Test
 In =test=
-#+BEGIN_SRC 
-make test; ./test
+#+BEGIN_SRC bash
+  make all; ./roberts_test; ./sho_test; ./species_test; 
 #+END_SRC
 
 * Use
