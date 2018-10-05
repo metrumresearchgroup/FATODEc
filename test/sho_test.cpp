@@ -56,7 +56,7 @@ struct ShoHessianFunctor{
              const std::vector<double>& v_in,
              const std::vector<double>& theta, const std::vector<double>& x_r,
              const std::vector<int>& x_i, std::ostream* msgs) const {
-    std::vector<double> res{0.0, 0.0, 0.0, 0.0};
+    std::vector<double> res{0.0, 0.0};
     return res;
   }
 };
