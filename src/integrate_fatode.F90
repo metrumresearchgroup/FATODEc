@@ -498,8 +498,8 @@ end subroutine integrate_fatode_fwd_sdirk_cc
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! tlm erk module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine integrate_fatode_tlm_erk( tin, tout, nvar, ntlm, var, var_tlm, atol_tlm, &
-     rtol_tlm, atol, rtol,&
+subroutine integrate_fatode_tlm_erk( tin, tout, nvar, ntlm, var, var_tlm, &
+     rtol_tlm, atol_tlm, rtol, atol, &
      fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
@@ -552,7 +552,7 @@ end subroutine integrate_fatode_tlm_erk
 !              double theta[], double x_r[], int x_i[] )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine integrate_fatode_tlm_erk_cc( tin, tout, nvar, ntlm,&
-     & var, var_tlm, atol_tlm, rtol_tlm, atol, rtol,&
+     & var, var_tlm, rtol_tlm, atol_tlm, rtol, atol, &
      & fun_cc, jac_cc, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,&
      & fy_user_data, fjac_user_data ) bind(c)
 
@@ -678,8 +678,8 @@ end subroutine integrate_fatode_tlm_erk_cc
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! tlm ros module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine integrate_fatode_tlm_ros( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_tlm, rtol_tlm, &
-     atol, rtol, fun, jac, hess_vec, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
+subroutine integrate_fatode_tlm_ros( tin, tout, n, ntlm, nnzero, y, y_tlm, rtol_tlm, atol_tlm, &
+     rtol, atol, fun, jac, hess_vec, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
   use ros_tlm_f90_integrator
@@ -693,11 +693,11 @@ subroutine integrate_fatode_tlm_ros( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_
    real(dp), intent(in) :: tin  ! start time
    real(dp), intent(in) :: tout ! end time
 
-   integer,          intent(in)  :: icntrl_u(20)
+   integer,  intent(in)  :: icntrl_u(20)
    real(dp), intent(in)  :: rcntrl_u(20)
-   integer,          intent(out) :: istatus_u(20)
+   integer,  intent(out) :: istatus_u(20)
    real(dp), intent(out) :: rstatus_u(20)
-   integer,          intent(out) :: ierr_u
+   integer,  intent(out) :: ierr_u
 
   interface
      subroutine fun(n, t, y, fy) bind (c)
@@ -734,8 +734,8 @@ end subroutine integrate_fatode_tlm_ros
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! tlm sdirk module wrapper
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine integrate_fatode_tlm_sdirk( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_tlm, rtol_tlm, &
-     & atol, rtol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
+subroutine integrate_fatode_tlm_sdirk( tin, tout, n, ntlm, nnzero, y, y_tlm, rtol_tlm, atol_tlm, &
+     & rtol, atol, fun, jac, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u ) bind(c)
 
   use iso_c_binding
   use sdirk_tlm_f90_integrator

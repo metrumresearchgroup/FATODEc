@@ -11,17 +11,20 @@ LDFLAGS += -L/usr/local/Cellar//gcc/7.3.0_1/lib/gcc/7/gcc/x86_64-apple-darwin16.
 LDFLAGS += -framework accelerate # for macOS to link BLAS/LAPACK
 
 gtest : $(GTEST)/src/gtest-all.o
-all : test
-test : CXXFLAGS += $(GTEST_CXXFLAGS) -std=c++14
+all : sho_test roberts_test
+sho_test : CXXFLAGS += $(GTEST_CXXFLAGS) -std=c++14
+roberts_test : CXXFLAGS += $(GTEST_CXXFLAGS) -std=c++14
 debug: CXXLAGS += -g -DDEBUG -O0
-debug : test
+debug : sho_test roberts_test
 
 $(GTEST)/src/gtest-all.o: CXXFLAGS = $(GTEST_CXXFLAGS) -g
 
 %.o : %.cpp $(LIB_FATODE_DIR)/include/fatodec.hpp
 	$(COMPILE.cc) -o $@ $<
-test : test.o $(GTEST_MAIN) $(GTEST)/src/gtest-all.o $(LIB_FATODE_DIR)/libfatode.a
+sho_test : sho_test.o $(GTEST_MAIN) $(GTEST)/src/gtest-all.o $(LIB_FATODE_DIR)/libfatode.a
+	$(LINK.cpp) -o $@ $^
+roberts_test : roberts_test.o $(GTEST_MAIN) $(GTEST)/src/gtest-all.o $(LIB_FATODE_DIR)/libfatode.a
 	$(LINK.cpp) -o $@ $^
 clean :
 	@rm *.o
-	@rm test
+	@rm *_test
