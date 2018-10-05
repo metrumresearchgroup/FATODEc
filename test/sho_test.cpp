@@ -49,6 +49,18 @@ struct ShoJacobiFunctor{
   }
 };
 
+struct ShoHessianFunctor{
+  inline std::vector<double>
+  operator()(const double& t_in, const std::vector<double>& y_in,
+             const std::vector<double>& u_in,
+             const std::vector<double>& v_in,
+             const std::vector<double>& theta, const std::vector<double>& x_r,
+             const std::vector<int>& x_i, std::ostream* msgs) const {
+    std::vector<double> res{0.0, 0.0, 0.0, 0.0};
+    return res;
+  }
+};
+
 /*
  * single harmonic oscillator test.
  * In TLM methods the sensitivity is calclated w.r.t. the
@@ -60,7 +72,9 @@ struct FATODEBindingTest_sho : public testing::Test {
   int n;
   int nnzero;
   int ntlm;
+  std::vector<double> init;
   std::vector<double> fy;
+  std::vector<double> init_tlm;
   std::vector<double> y_tlm;
   std::vector<double> rtol_tlm;
   std::vector<double> atol_tlm;
@@ -73,6 +87,7 @@ struct FATODEBindingTest_sho : public testing::Test {
   int ierr_u;
   ShoFunctor f;
   ShoJacobiFunctor fj;
+  ShoHessianFunctor fh;
   std::vector<double> theta;
   std::vector<double> x_r;
   std::vector<int> x_i;
@@ -86,8 +101,10 @@ struct FATODEBindingTest_sho : public testing::Test {
     n(2),
     nnzero(0),
     ntlm(n),
-    fy{0.0, 1.0},
-    y_tlm{1.0, 0.0, 0.0, 1.0},
+    init{0.0, 1.0},
+    fy(init),
+    init_tlm{1.0, 0.0, 0.0, 1.0},
+    y_tlm(init_tlm),
     rtol_tlm(n * ntlm, 1.E-6),
     atol_tlm(n * ntlm, 1.E-10),
     rtol{1.E-6, 1.E-6},
@@ -208,59 +225,49 @@ TEST_F(FATODEBindingTest_sho, FWD_sdirk) {
   EXPECT_FLOAT_EQ(fy[1], fy_sol[1]);
 }
 
-TEST_F(FATODEBindingTest_sho, TLM_erk) {
-  const std::vector<double> fy_sol {-0.46558353, 0.50542212};
-  const std::vector<double> y_tlm_sol {0.4355847330, 0.4655835298, 2.1044375036, -2.2845086578};
+// TEST_F(FATODEBindingTest_sho, TLM_erk) {
+//   const std::vector<double> fy_sol {-0.46558353, 0.50542212};
+//   const std::vector<double> y_tlm_sol {0.4355847330, 0.4655835298, -0.46558322, 0.5054216296};
 
-  fy = std::vector<double>{0.0, 1.0};
-  y_tlm = std::vector<double>{1.0, 0.0, 0.0, 1.0};
-  integrate_fatode_tlm_erk( &tin, &tout, &n, &ntlm,
+//   integrate_fatode_tlm_erk( &tin, &tout, &n, &ntlm,
+//                             fy.data(), y_tlm.data(),
+//                             rtol_tlm.data(), atol_tlm.data(),
+//                             rtol.data(), atol.data(),
+//                             fsho, fsho_jac,
+//                             icntrl_u.data(), rcntrl_u.data(), istatus_u.data(), rstatus_u.data(), &ierr_u );
+//   for (int i = 0; i < n; ++i)     EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
+//   for (int i = 0; i < n * n; ++i) EXPECT_FLOAT_EQ(y_tlm[i], y_tlm_sol[i]);
+
+//   // reset init condition
+//   fy = init;
+//   y_tlm = init_tlm;
+//   fatode_cc::integrate_ode_tlm_erk( tin, tout, n, ntlm, fy, y_tlm,
+//                                     rtol_tlm, atol_tlm, rtol, atol,
+//                                     f, fj, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
+//                                     theta, x_r, x_i, msgs );
+//   for (int i = 0; i < n; ++i)     EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
+//   for (int i = 0; i < n * n; ++i) EXPECT_FLOAT_EQ(y_tlm[i], y_tlm_sol[i]);
+// }
+
+TEST_F(FATODEBindingTest_sho, TLM_ros) {
+  const std::vector<double> fy_sol {-0.46558322, 0.5054216296};
+  const std::vector<double> y_tlm_sol {0.43558416, 0.46558322, -0.46558322, 0.5054216296};
+  integrate_fatode_tlm_ros( &tin, &tout, &n, &ntlm, &nnzero,
                             fy.data(), y_tlm.data(),
                             rtol_tlm.data(), atol_tlm.data(),
                             rtol.data(), atol.data(),
-                            fsho, fsho_jac,
+                            fsho, fsho_jac, fsho_hess,
                             icntrl_u.data(), rcntrl_u.data(), istatus_u.data(), rstatus_u.data(), &ierr_u );
   for (int i = 0; i < n; ++i)     EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
   for (int i = 0; i < n * n; ++i) EXPECT_FLOAT_EQ(y_tlm[i], y_tlm_sol[i]);
 
   // reset init condition
-  fy = std::vector<double>{0.0, 1.0};
-  y_tlm = std::vector<double>{1.0, 0.0, 0.0, 1.0};
-  fatode_cc::integrate_ode_tlm_erk( tin, tout, n, ntlm, fy, y_tlm,
+  fy = init;
+  y_tlm = init_tlm;
+  fatode_cc::integrate_ode_tlm_ros( tin, tout, n, ntlm, nnzero, fy, y_tlm,
                                     rtol_tlm, atol_tlm, rtol, atol,
-                                    f, fj, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
+                                    f, fj, fh, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
                                     theta, x_r, x_i, msgs );
   for (int i = 0; i < n; ++i)     EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
   for (int i = 0; i < n * n; ++i) EXPECT_FLOAT_EQ(y_tlm[i], y_tlm_sol[i]);
 }
-
-// TEST_F(FATODEBindingTest_sho, TLM_ros) {
-//   const std::vector<double> fy_sol {-0.46558322, 0.5054216296};
-//   // const std::vector<double> y_tlm_sol {0.4355847330, 0.4655835298, 2.1044375036, -2.2845086578};
-//   integrate_fatode_tlm_ros( &tin, &tout, &n, &ntlm, &nnzero,
-//                             fy.data(), y_tlm.data(),
-//                             rtol_tlm.data(), atol_tlm.data(),
-//                             rtol.data(), atol.data(),
-//                             fsho, fsho_jac, fsho_hess,
-//                             icntrl_u.data(), rcntrl_u.data(), istatus_u.data(), rstatus_u.data(), &ierr_u );
-
-//   std::cout.precision(10);
-//   std::cout << "taki test: " << y_tlm[0] << "\n";
-//   std::cout << "taki test: " << y_tlm[1] << "\n";
-//   std::cout << "taki test: " << y_tlm[2] << "\n";
-//   std::cout << "taki test: " << y_tlm[3] << "\n";
-
-//   for (int i = 0; i < n; ++i)     EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
-//   // for (int i = 0; i < n * n; ++i) EXPECT_FLOAT_EQ(y_tlm[i], y_tlm_sol[i]);
-
-//   // // reset init condition
-//   // fy = std::vector<double>{0.0, 1.0};
-//   // y_tlm = std::vector<double>{1.0, 0.0, 0.0, 1.0};
-
-//   // fatode_cc::integrate_ode_tlm_erk( tin, tout, n, ntlm, fy, y_tlm,
-//   //                                   rtol, atol, rtol, atol,
-//   //                                   f, fj, icntrl_u, rcntrl_u, istatus_u, rstatus_u, ierr_u,
-//   //                                   theta, x_r, x_i, msgs );
-//   // for (int i = 0; i < n; ++i)     EXPECT_FLOAT_EQ(fy[i], fy_sol[i]);
-//   // for (int i = 0; i < n * n; ++i) EXPECT_FLOAT_EQ(y_tlm[i], y_tlm_sol[i]);
-// }

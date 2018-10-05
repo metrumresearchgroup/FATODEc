@@ -11,7 +11,14 @@ contains
     subroutine lapack_init(n)
       integer :: n,state
       nvar = n
-      allocate(ip(nvar),fjac(nvar,nvar),fjac1(nvar,nvar),djdt(nvar,nvar),e(nvar,nvar),STAT=state)
+      ! lapack_free doesn't free ip
+      if(.not. allocated(ip)) then
+         allocate(ip(nvar),STAT=state)
+         if(state .ne. 0) then
+            stop 'ALlocation error in lapack_init'
+         end if
+      endif
+      allocate(fjac(nvar,nvar),fjac1(nvar,nvar),djdt(nvar,nvar),e(nvar,nvar),STAT=state)
       if(state .ne. 0) then
         stop 'ALlocation error in lapack_init'
       end if

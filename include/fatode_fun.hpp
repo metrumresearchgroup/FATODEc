@@ -46,6 +46,27 @@ namespace fatode_cc {
     };
   }
 
+  /*
+   * return a lambda that can be passed to Fortran function
+   * @c xxx_cc to calculate binomial product with Hessian matrix.
+   */
+  template<typename OdeHess>
+  auto fatode_hess() {
+    return [](int* n, double* t, double y[],
+              double u[], double v[], double hv[],
+              void* user_data) {
+      OdeHess* hess = static_cast<OdeHess*>(user_data);
+      std::vector<double> yv(y, y + *n);
+      std::vector<double> uv(u, u + *n);
+      std::vector<double> vv(v, v + *n);
+      std::vector<double> hvv((*n));
+      hvv = hess -> f(*t, yv, uv, vv, hess -> theta, hess -> x_r, hess -> x_i, hess -> msgs);
+      for (int i = 0; i < (*n); ++i) {
+        hv[i] = hvv[i];
+      }
+    };
+  }
+
 }
 
 

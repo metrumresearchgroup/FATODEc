@@ -127,6 +127,20 @@ extern "C" {
                                   int istatus_u[], double rstatus_u[],
                                   int* ierr_u );
 
+  void integrate_fatode_tlm_ros_cc ( double* tin, double* tout,
+                                     int* nvar, int* ntlm, int* nnzero, double var[], double var_tlm[],
+                                     double rtol_tlm[], double atol_tlm[],
+                                     double rtol[], double atol[],
+                                     void (*fun) (int*, double*, double[], double[], void* fy_user_data),
+                                     void (*jac) (int*, double*, double[], double[], void* fjac_user_data),
+                                     void (*hess_vec) (int*, double*, double[], double[], double[], double[], void* fhess_user_data),
+                                     int icntrl_u[], double rcntrl_u[],
+                                     int istatus_u[], double rstatus_u[],
+                                     int* ierr_u,
+                                     void* fy_user_data,
+                                     void* fjac_user_data,
+                                     void* fhess_user_data );
+
   void integrate_fatode_tlm_sdirk ( double* tin, double* tout,
                                     int* nvar, int* ntlm, int* nnzero, double var[], double var_tlm[],
                                     double rtol_tlm[], double atol_tlm[],
