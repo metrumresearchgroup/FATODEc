@@ -11,6 +11,7 @@ module tlm_sdirk_lapack
 contains
     subroutine lapack_init(n)
       integer :: n,state
+      nvar = n
       allocate(ip(nvar),ip_tlm(nvar),fjac(nvar,nvar),fjac1(nvar,nvar),&
                           e(nvar,nvar),e_tlm(nvar,nvar),STAT=state)
       if(state .ne. 0) then

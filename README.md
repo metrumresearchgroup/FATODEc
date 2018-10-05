@@ -1,23 +1,23 @@
-- [FATODEc](#orgf8167be)
-- [Build](#orgef49e03)
-- [Quick start](#orgc3dc979)
-- [Test](#org96100eb)
-- [Use](#orgd038e96)
-  - [Forward integration solvers(FWD)](#org760bbb7)
-  - [Tangential linear model(TLM)](#orgd4d988d)
-- [TO-DO](#org14d1ca7)
-  - [Tangential linear model(TLM)](#org442b50d)
-  - [Adjoint sensitivity solvers(ADJ)](#org964cc57)
+- [FATODEc](#org3b282bc)
+- [Build](#org202635a)
+- [Quick start](#org2430e5f)
+- [Test](#orgf855a13)
+- [Use](#orgdd4cdbd)
+  - [Forward integration solvers(FWD)](#org4b3f200)
+  - [Tangential linear model(TLM)](#org557773b)
+- [TO-DO](#org0ec929b)
+  - [Tangential linear model(TLM)](#org74fd95c)
+  - [Adjoint sensitivity solvers(ADJ)](#orgce40f87)
 
 
-<a id="orgf8167be"></a>
+<a id="org3b282bc"></a>
 
 # FATODEc
 
 C/C++ bindings of [FATODE](http://people.cs.vt.edu/asandu/Software/FATODE/index.html) solver library. Currently doesn't support sparse matrix solvers, as the application is mainly for PKPD modeling.
 
 
-<a id="orgef49e03"></a>
+<a id="org202635a"></a>
 
 # Build
 
@@ -28,7 +28,7 @@ make all
 ```
 
 
-<a id="orgc3dc979"></a>
+<a id="org2430e5f"></a>
 
 # Quick start
 
@@ -115,7 +115,7 @@ H new                                          :  0.100000
 ```
 
 
-<a id="org96100eb"></a>
+<a id="orgf855a13"></a>
 
 # Test
 
@@ -126,14 +126,14 @@ make test; ./test
 ```
 
 
-<a id="orgd038e96"></a>
+<a id="orgdd4cdbd"></a>
 
 # Use
 
-Use C header `FATODEc/include/fatodec.h` or C++ header `FATODEc/include/fatode_cc.hpp`. The C++ interface is in namespace `fatode_cc`.
+Use C header `FATODEc/include/fatodec.h` or C++ header `FATODEc/include/fatode_cc.hpp`. The C++ interface is in namespace `fatode_cc`. Currently neither SUPER-LU or UMFPACK linear solver is supported.
 
 
-<a id="org760bbb7"></a>
+<a id="org4b3f200"></a>
 
 ## Forward integration solvers(FWD)
 
@@ -143,28 +143,28 @@ Use C header `FATODEc/include/fatodec.h` or C++ header `FATODEc/include/fatode_c
 -   Singly Diagonally Implicit Runge-Kutta methods `integrate_fatode_fwd_sdirk` (C & C++)
 
 
-<a id="orgd4d988d"></a>
+<a id="org557773b"></a>
 
 ## Tangential linear model(TLM)
 
 -   Explicit Runge-Kutta `integrate_fatode_tlm_erk` (C & C++)
+-   Rosenbrock methods `integrate_fatode_tlm_ros` (C & C++)
 
 
-<a id="org14d1ca7"></a>
+<a id="org0ec929b"></a>
 
 # TO-DO
 
 
-<a id="org442b50d"></a>
+<a id="org74fd95c"></a>
 
 ## Tangential linear model(TLM)
 
 -   Fully Implicit Runge-Kutta methods `integrate_fatode_tlm_rk`
--   Rosenbrock methods `integrate_fatode_tlm_ros`
 -   Singly Diagonally Implicit Runge-Kutta methods `integrate_fatode_tlm_sdirk`
 
 
-<a id="org964cc57"></a>
+<a id="orgce40f87"></a>
 
 ## Adjoint sensitivity solvers(ADJ)
 

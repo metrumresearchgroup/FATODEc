@@ -12,6 +12,7 @@ namespace fatode_cc {
   void integrate_ode_tlm_sdirk( double tin, double tout,
                               int n,
                               int ntlm,
+                              int nnzero,
                               std::vector<double>& var,
                               std::vector<double>& var_tlm,
                               std::vector<double>& rtol_tlm,
@@ -34,7 +35,7 @@ namespace fatode_cc {
     void* fy_user_data = static_cast<void*>(&ode);
     void* fjac_user_data = static_cast<void*>(&odejac);
 
-    integrate_fatode_tlm_sdirk_cc( &tin, &tout, &n, &ntlm,
+    integrate_fatode_tlm_sdirk_cc( &tin, &tout, &n, &ntlm, &nnzero,
                                  var.data(), var_tlm.data(),
                                  rtol_tlm.data(), atol_tlm.data(),
                                  rtol.data(), atol.data(),

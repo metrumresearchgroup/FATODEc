@@ -890,8 +890,8 @@ end subroutine integrate_fatode_tlm_sdirk
 ! void func_cc(int* n, double* t, double y[], double fy[],
 !              double theta[], double x_r[], int x_i[] )
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine integrate_fatode_tlm_sdirk_cc( tin, tout, n, ntlm, nnzero, y, y_tlm, atol_tlm, rtol_tlm, &
-     & atol, rtol, fun_cc, jac_cc, icntrl_u, rcntrl_u,&
+subroutine integrate_fatode_tlm_sdirk_cc( tin, tout, n, ntlm, nnzero, y, y_tlm, rtol_tlm, atol_tlm, &
+     & rtol, atol, fun_cc, jac_cc, icntrl_u, rcntrl_u,&
      & istatus_u, rstatus_u, ierr_u, &
      & fy_user_data, fjac_user_data ) bind(c)
 
